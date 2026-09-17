@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure DevOps Notifier</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand">
+        <div class="logo">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z"/>
+            <path d="M2 17L12 22L22 17"/>
+            <path d="M2 12L12 17L22 12"/>
+          </svg>
+        </div>
+        <span class="brand-title">ADO Notifier</span>
+      </div>
+
+      <div class="header-actions">
+        <button id="btnQuickSync" class="icon-btn" title="Sincronizar Ahora">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+        </button>
+        <button id="btnOpenOptions" class="icon-btn" title="Abrir Portal de Configuración">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Connection Status Banner -->
+    <div id="popupStatusBanner" class="status-banner disconnected">
+      <span class="status-dot"></span>
+      <span id="popupStatusText">Verificando configuración...</span>
+    </div>
+
+    <!-- Quick Stats Cards -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span id="statNew" class="stat-num blue">0</span>
+        <span class="stat-label">Nuevos</span>
+      </div>
+      <div class="stat-card">
+        <span id="statQa" class="stat-num yellow">0</span>
+        <span class="stat-label">En QA</span>
+      </div>
+      <div class="stat-card">
+        <span id="statDone" class="stat-num green">0</span>
+        <span class="stat-label">Done</span>
+      </div>
+      <div class="stat-card">
+        <span id="statPurple" class="stat-num purple">0</span>
+        <span class="stat-label">PO / Reab</span>
+      </div>
+      <div class="stat-card">
+        <span id="statHu" class="stat-num blue">0</span>
+        <span class="stat-label">HUs</span>
+      </div>
+    </div>
+
+    <!-- Recent Alerts Header with Clear and Mark Read Buttons -->
+    <div class="section-title flex-between">
+      <span>Alertas Recientes</span>
+      <div class="section-actions">
+        <button id="btnPopupMarkAllRead" class="btn-text-action" title="Marcar todas como leídas">Marcar leídas</button>
+        <span class="action-divider">•</span>
+        <button id="btnPopupClearAll" class="btn-text-danger" title="Limpiar todas las alertas">Limpiar Todo</button>
+      </div>
+    </div>
+
+    <div class="alerts-wrapper">
+      <ul id="popupAlertsList" class="popup-alerts-list">
+        <!-- Filled dynamically -->
+      </ul>
+      <div id="popupEmptyState" class="empty-state-mini">
+        <p>No hay alertas recientes</p>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <span id="lastSyncText">Sync: Nunca</span>
+      <button id="btnGoToDashboard" class="link-btn">Portal Completo ↗</button>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

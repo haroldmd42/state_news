@@ -1,0 +1,349 @@
+/* Floating In-Page Toast Notification Styles - Premium Glassmorphism UI */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap');
+
+.ado-toast-container {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  pointer-events: none;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.ado-toast {
+  pointer-events: auto;
+  width: 380px;
+  max-width: calc(100vw - 40px);
+  background: rgba(11, 15, 25, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 16px;
+  padding: 16px 18px;
+  color: #F1F5F9;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  cursor: pointer;
+  animation: adoToastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Category Accent Borders & Shadows */
+/* AZUL: BUG_NEW, HU, HU_COMMITTED */
+.ado-toast.BUG_NEW,
+.ado-toast.HU,
+.ado-toast.HU_COMMITTED {
+  border: 1px solid rgba(14, 165, 233, 0.45);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(14, 165, 233, 0.18);
+}
+
+/* AMARILLO: BUG_QA y HU_QA */
+.ado-toast.BUG_QA,
+.ado-toast.HU_QA {
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.18);
+}
+
+/* VERDE: BUG_DONE y HU_DONE */
+.ado-toast.BUG_DONE,
+.ado-toast.HU_DONE {
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 24px rgba(16, 185, 129, 0.25);
+}
+
+/* MORADO: BUG_REOPEN y HU_REVIEW_PO */
+.ado-toast.BUG_REOPEN,
+.ado-toast.HU_REVIEW_PO {
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(168, 85, 247, 0.18);
+}
+
+/* ROJO: HU_IMPEDIMENT */
+.ado-toast.HU_IMPEDIMENT {
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 24px rgba(239, 68, 68, 0.3);
+}
+
+/* CIAN: HU_STAGE */
+.ado-toast.HU_STAGE {
+  border: 1px solid rgba(6, 182, 212, 0.45);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(6, 182, 212, 0.2);
+}
+
+/* INDIGO/VIOLETA: HU_ASSIGNED */
+.ado-toast.HU_ASSIGNED {
+  border: 1px solid rgba(99, 102, 241, 0.55);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 24px rgba(99, 102, 241, 0.3);
+}
+
+.ado-toast:hover {
+  transform: translateY(-3px) scale(1.01);
+}
+
+.ado-toast.BUG_NEW:hover,
+.ado-toast.HU:hover,
+.ado-toast.HU_COMMITTED:hover {
+  border-color: #38BDF8;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(14, 165, 233, 0.35);
+}
+
+.ado-toast.BUG_QA:hover,
+.ado-toast.HU_QA:hover {
+  border-color: #FBBF24;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(245, 158, 11, 0.35);
+}
+
+.ado-toast.BUG_DONE:hover,
+.ado-toast.HU_DONE:hover {
+  border-color: #34D399;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 32px rgba(16, 185, 129, 0.45);
+}
+
+.ado-toast.BUG_REOPEN:hover,
+.ado-toast.HU_REVIEW_PO:hover {
+  border-color: #C084FC;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(168, 85, 247, 0.35);
+}
+
+.ado-toast.HU_IMPEDIMENT:hover {
+  border-color: #F87171;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 32px rgba(239, 68, 68, 0.5);
+}
+
+.ado-toast.HU_STAGE:hover {
+  border-color: #22D3EE;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(6, 182, 212, 0.4);
+}
+
+.ado-toast.HU_ASSIGNED:hover {
+  border-color: #818CF8;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 32px rgba(99, 102, 241, 0.5);
+}
+
+@keyframes adoToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes adoToastFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.95);
+  }
+}
+
+/* Icon Container */
+.ado-toast-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* AZUL: BUG_NEW, HU, HU_COMMITTED */
+.ado-toast-icon.BUG_NEW,
+.ado-toast-icon.HU,
+.ado-toast-icon.HU_COMMITTED {
+  background: rgba(14, 165, 233, 0.18);
+  color: #38BDF8;
+  border: 1px solid rgba(14, 165, 233, 0.35);
+}
+
+/* AMARILLO: BUG_QA y HU_QA */
+.ado-toast-icon.BUG_QA,
+.ado-toast-icon.HU_QA {
+  background: rgba(245, 158, 11, 0.18);
+  color: #FBBF24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+/* VERDE: BUG_DONE y HU_DONE */
+.ado-toast-icon.BUG_DONE,
+.ado-toast-icon.HU_DONE {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34D399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+/* MORADO: BUG_REOPEN y HU_REVIEW_PO */
+.ado-toast-icon.BUG_REOPEN,
+.ado-toast-icon.HU_REVIEW_PO {
+  background: rgba(168, 85, 247, 0.18);
+  color: #C084FC;
+  border: 1px solid rgba(168, 85, 247, 0.35);
+}
+
+/* ROJO: HU_IMPEDIMENT */
+.ado-toast-icon.HU_IMPEDIMENT {
+  background: rgba(239, 68, 68, 0.2);
+  color: #F87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+/* CIAN: HU_STAGE */
+.ado-toast-icon.HU_STAGE {
+  background: rgba(6, 182, 212, 0.2);
+  color: #22D3EE;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+}
+
+/* INDIGO: HU_ASSIGNED */
+.ado-toast-icon.HU_ASSIGNED {
+  background: rgba(99, 102, 241, 0.22);
+  color: #818CF8;
+  border: 1px solid rgba(99, 102, 241, 0.45);
+}
+
+/* Content Area */
+.ado-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ado-toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.ado-toast-pill {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+/* AZUL */
+.ado-toast-pill.BUG_NEW,
+.ado-toast-pill.HU,
+.ado-toast-pill.HU_COMMITTED {
+  background: rgba(14, 165, 233, 0.22);
+  color: #38BDF8;
+}
+
+/* AMARILLO */
+.ado-toast-pill.BUG_QA,
+.ado-toast-pill.HU_QA {
+  background: rgba(245, 158, 11, 0.22);
+  color: #FBBF24;
+}
+
+/* VERDE */
+.ado-toast-pill.BUG_DONE,
+.ado-toast-pill.HU_DONE {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34D399;
+}
+
+/* MORADO */
+.ado-toast-pill.BUG_REOPEN,
+.ado-toast-pill.HU_REVIEW_PO {
+  background: rgba(168, 85, 247, 0.22);
+  color: #C084FC;
+}
+
+/* ROJO */
+.ado-toast-pill.HU_IMPEDIMENT {
+  background: rgba(239, 68, 68, 0.25);
+  color: #F87171;
+}
+
+/* CIAN */
+.ado-toast-pill.HU_STAGE {
+  background: rgba(6, 182, 212, 0.25);
+  color: #22D3EE;
+}
+
+/* INDIGO */
+.ado-toast-pill.HU_ASSIGNED {
+  background: rgba(99, 102, 241, 0.25);
+  color: #818CF8;
+}
+
+.ado-toast-time {
+  font-size: 0.7rem;
+  color: #64748B;
+}
+
+.ado-toast-title {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #FFFFFF;
+  line-height: 1.35;
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+
+.ado-toast-msg {
+  font-size: 0.8rem;
+  color: #94A3B8;
+  line-height: 1.45;
+  white-space: pre-line;
+  word-break: break-word;
+}
+
+.ado-toast-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ado-toast-link {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #38BDF8;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ado-toast-close {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94A3B8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.ado-toast-close:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #F87171;
+  border-color: rgba(239, 68, 68, 0.4);
+}

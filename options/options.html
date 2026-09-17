@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Azure DevOps Notifier - Portal de Configuración</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="options.css">
+  <link rel="stylesheet" href="../content/toast.css">
+</head>
+<body class="dark-theme">
+  <div class="app-layout">
+    <!-- Header Navigation -->
+    <header class="main-header">
+      <div class="header-brand">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#00BCF2"/>
+            <path d="M2 17L12 22L22 17" stroke="#0078D4"/>
+            <path d="M2 12L12 17L22 12" stroke="#38BDF8"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Azure DevOps Notifier</h1>
+          <p class="subtitle">Portal de Control & Notificaciones en Tiempo Real</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div id="connectionStatusBadge" class="status-badge disconnected">
+          <span class="status-dot"></span>
+          <span class="status-text">Sin Configurar</span>
+        </div>
+        <button id="btnManualSync" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+          Sincronizar Ahora
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Grid Content -->
+    <div class="dashboard-grid">
+      <!-- Sidebar Navigation Tabs -->
+      <aside class="sidebar-nav">
+        <button class="nav-item active" data-tab="credentials">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Credenciales & Conexión
+        </button>
+        <button class="nav-item" data-tab="mappings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          Mapeo de Estados
+        </button>
+        <button class="nav-item" data-tab="tester">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Simulador & Pruebas
+        </button>
+        <button class="nav-item" data-tab="history">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Historial de Alertas
+        </button>
+        <button class="nav-item" data-tab="guide">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Guía de Configuración PAT
+        </button>
+      </aside>
+
+      <!-- Main Tab Windows -->
+      <main class="content-area">
+
+        <!-- Tab 1: Credenciales & Conexión -->
+        <section id="tab-credentials" class="tab-page active">
+          <div class="card glass-card">
+            <div class="card-header">
+              <h2>Conexión con Azure DevOps</h2>
+              <p>Ingresa los datos de acceso de tu organización y proyecto.</p>
+            </div>
+            
+            <form id="formCredentials" class="form-grid">
+              <div class="form-group">
+                <label for="inputOrg">Organización Azure DevOps <span class="required">*</span></label>
+                <div class="input-prefix-wrapper">
+                  <span class="prefix">dev.azure.com/</span>
+                  <input type="text" id="inputOrg" placeholder="ej. mi-empresa" required>
+                </div>
+                <small class="help-text">Nombre de tu organización en la URL de Azure DevOps.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="inputProject">Nombre del Proyecto <span class="required">*</span></label>
+                <input type="text" id="inputProject" placeholder="ej. Plataforma Virtual - NARP" required>
+                <small class="help-text">Proyecto específico donde monitorear los Work Items.</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label for="inputPat">Personal Access Token (PAT) <span class="required">*</span></label>
+                <div class="input-password-wrapper">
+                  <input type="password" id="inputPat" placeholder="Token generado en Azure DevOps (Permiso Work Items: Read)" required>
+                  <button type="button" id="btnTogglePat" class="btn-icon-inline" title="Mostrar/Ocultar Token">
+                    <svg id="iconEye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                </div>
+                <small class="help-text">El token se almacena de forma local y cifrada en tu navegador.</small>
+              </div>
+
+              <div class="form-group span-2">
+                <div class="settings-cards-grid">
+                  <div class="setting-card">
+                    <div class="setting-info">
+                      <div class="setting-title">Filtrar Notificaciones por Usuario Asociado (HUs y Bugs)</div>
+                      <div class="setting-desc">Solo se notificarán los <strong>Product Backlog Items</strong> y <strong>Bugs</strong> donde estés asignado o como Responsable (QA, Backend, Maquetación, Integrador). Se ignoran tareas (Tasks) y elementos ajenos.</div>
+                    </div>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="chkFilterHUByUser" checked>
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="inputAssignedUser">Tu Nombre de Usuario o Email (Para filtrado)</label>
+                <input type="text" id="inputAssignedUser" placeholder="ej. yan.munoz@empresa.com o Yan Harold Munoz">
+                <small class="help-text">Se compara sin distinción de tildes o mayúsculas en campos como Responsable QA, AssignedTo, Backend, etc.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="inputInterval">Intervalo de Verificación (Minutos)</label>
+                <div class="range-wrapper">
+                  <input type="range" id="inputInterval" min="1" max="15" step="1" value="1">
+                  <span id="intervalValue" class="badge-tag">1 min</span>
+                </div>
+                <small class="help-text">Frecuencia con la que la extensión buscará cambios en segundo plano.</small>
+              </div>
+
+              <!-- Refined Notification Settings Panel -->
+              <div class="form-group span-2">
+                <label class="section-label-sm">Preferencias de Notificación</label>
+                <div class="settings-cards-grid">
+                  <div class="setting-card">
+                    <div class="setting-info">
+                      <div class="setting-title">Notificaciones Flotantes del Navegador</div>
+                      <div class="setting-desc">Emite alertas nativas del sistema operativo/navegador.</div>
+                    </div>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="chkNotifications" checked>
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+
+                  <div class="setting-card">
+                    <div class="setting-info">
+                      <div class="setting-title">Anuncios Flotantes In-Page (Toast)</div>
+                      <div class="setting-desc">Muestra tarjetas flotantes animadas en las pestañas activas.</div>
+                    </div>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="chkToasts" checked>
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+
+                  <div class="setting-card">
+                    <div class="setting-info">
+                      <div class="setting-title">Sonido de Notificación</div>
+                      <div class="setting-desc">Emite un tono armónico sintetizado al recibir una alerta.</div>
+                    </div>
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="chkSound" checked>
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div id="testFeedback" class="feedback-banner hidden"></div>
+
+              <div class="form-actions span-2">
+                <button type="button" id="btnTestConnection" class="btn btn-secondary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  Probar Conexión
+                </button>
+
+                <button type="submit" id="btnSaveCredentials" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Guardar Configuración
+                </button>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <!-- Tab 2: Mapeo de Estados -->
+        <section id="tab-mappings" class="tab-page">
+          <div class="card glass-card">
+            <div class="card-header">
+              <h2>Mapeo Personalizado de Estados y Tipos</h2>
+              <p>Adapta la extensión a la plantilla de procesos de tu proyecto (Agile, Scrum, CMMI o Custom).</p>
+            </div>
+
+            <div class="form-grid">
+              <div class="form-group span-2">
+                <label>Tipos reconocidos como Historia de Usuario (HU)</label>
+                <input type="text" id="mapHuTypes" placeholder="Product Backlog Item, PBI, User Story, Historia de Usuario, Feature, Epic">
+                <small class="help-text">Separados por coma. Se notificarán al cambiar de estado.</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Tipos reconocidos como BUGS</label>
+                <input type="text" id="mapBugTypes" placeholder="Bug, Defect, Fallo, Error">
+                <small class="help-text">Separados por coma.</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de BUGS NUEVOS (Regla: Notificar Bug Reportado)</label>
+                <input type="text" id="mapNewBugStates" placeholder="New, Nuevo, To Do, Por hacer">
+                <small class="help-text">Cuando un bug es creado/descubierto en estos estados (ej. "New").</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de BUGS EN QA (Regla: Notificar paso a QA)</label>
+                <input type="text" id="mapQaBugStates" placeholder="Qa, QA, In QA, Testing, En QA, Ready for QA, En Pruebas">
+                <small class="help-text">Estados que representan paso a control de calidad (ej. "Qa" o "QA").</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de BUGS REABIERTOS (Regla: Notificar Reapertura)</label>
+                <input type="text" id="mapReopenBugStates" placeholder="Reopened, Reopen, Reabierto, Re-opened">
+                <small class="help-text">Estados que indican que un bug ha sido reabierto (ej. "Reopened").</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de BUGS CERRADOS / FINALIZADOS (Regla: Notificar Bug Cerrado en Verde)</label>
+                <input type="text" id="mapDoneBugStates" placeholder="Done, Closed, Resolved, Cerrado, Resuelto, Finalizado">
+                <small class="help-text">Estados que indican que el bug fue resuelto/cerrado (ej. "Done", "Closed", "Resolved"). Emitirá una notificación verde.</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de HISTORIAS EN QA (Regla: Notificar HU en Amarillo)</label>
+                <input type="text" id="mapQaHuStates" placeholder="Qa, QA, In QA, Testing, En QA, Ready for QA, En Pruebas">
+                <small class="help-text">Cuando una HU pase a estos estados de QA (emitirá una notificación amarilla de atención QA).</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de HISTORIAS EN REVIEW PO (Regla: Notificar HU en Morado)</label>
+                <input type="text" id="mapReviewPoHuStates" placeholder="Review PO, Review Po, PO Review, En Revisión PO, Revision PO">
+                <small class="help-text">Cuando una HU pase a revisión por el Product Owner (emitirá una notificación morada).</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de HISTORIAS FINALIZADAS / DONE (Regla: Notificar HU en Verde)</label>
+                <input type="text" id="mapDoneHuStates" placeholder="Done, Closed, Resolved, Cerrado, Resuelto, Finalizado">
+                <small class="help-text">Cuando una HU pase a estado finalizado/cerrado (emitirá una notificación verde de éxito).</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de HISTORIAS CON IMPEDIMENTO (Regla: Notificar Bloqueo en Rojo)</label>
+                <input type="text" id="mapImpedimentHuStates" placeholder="Impediment, Blocked, Impedimento, Bloqueado, Bloqueada">
+                <small class="help-text">Cuando una HU pase a estado de impedimento o bloqueo (emitirá una alerta roja urgente).</small>
+              </div>
+
+              <div class="form-group span-2">
+                <label>Estados de HISTORIAS EN STAGE (Regla: Notificar HU en Cian)</label>
+                <input type="text" id="mapStageHuStates" placeholder="In Stage, Stage, En Stage, Staging">
+                <small class="help-text">Cuando una HU pase al ambiente Stage / Pre-producción.</small>
+              </div>
+
+              <div class="form-actions span-2">
+                <button type="button" id="btnSaveMappings" class="btn btn-primary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                  Guardar Mapeo de Estados
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 3: Simulador & Pruebas -->
+        <section id="tab-tester" class="tab-page">
+          <div class="card glass-card">
+            <div class="card-header flex-between">
+              <div>
+                <h2>Simulador de Notificaciones Flotantes</h2>
+                <p>Prueba al instante cómo lucen y suenan las notificaciones sin esperar un evento real.</p>
+              </div>
+              <button id="btnTestSound" class="btn btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                Probar Sonido
+              </button>
+            </div>
+
+            <div class="tester-grid">
+              <!-- BUGS -->
+              <div class="tester-card">
+                <div class="tester-icon bug-new">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M6 18h12M6 12h12M6 6h12M12 2v4"/></svg>
+                </div>
+                <h3>1. Bug Nuevo (AZUL)</h3>
+                <p>Simula un bug reportado en estado New o To Do.</p>
+                <button class="btn btn-secondary btn-test" data-category="BUG_NEW">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar Bug Nuevo
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon bug-qa">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>
+                </div>
+                <h3>2. Bug en QA (AMARILLO)</h3>
+                <p>Simula cuando un bug es derivado al equipo de QA.</p>
+                <button class="btn btn-secondary btn-test" data-category="BUG_QA">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar Bug en QA
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon bug-done">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <h3>3. Bug Cerrado (VERDE)</h3>
+                <p>Simula cuando un bug pasa a estado Done / Cerrado.</p>
+                <button class="btn btn-secondary btn-test" data-category="BUG_DONE">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar Bug Cerrado
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon bug-reopen">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                </div>
+                <h3>4. Bug Reabierto (MORADO)</h3>
+                <p>Simula un bug reabierto tras pruebas.</p>
+                <button class="btn btn-secondary btn-test" data-category="BUG_REOPEN">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar Bug Reabierto
+                </button>
+              </div>
+
+              <!-- HISTORIAS DE USUARIO -->
+              <div class="tester-card">
+                <div class="tester-icon hu-qa">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><circle cx="14" cy="10" r="4"/><path d="m17 13 2 2"/></svg>
+                </div>
+                <h3>5. HU en QA (AMARILLO)</h3>
+                <p>Simula cuando una HU pasa a pruebas / estado QA ("Qa").</p>
+                <button class="btn btn-secondary btn-test" data-category="HU_QA">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar HU en QA
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon hu-review">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M10 9l2 2 4-4"/></svg>
+                </div>
+                <h3>6. HU en Review PO (MORADO)</h3>
+                <p>Simula cuando una HU pasa a revisión con el PO.</p>
+                <button class="btn btn-secondary btn-test" data-category="HU_REVIEW_PO">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar HU en Review PO
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon hu-done" style="background: rgba(16, 185, 129, 0.2); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.4);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <h3>7. HU Finalizada (VERDE)</h3>
+                <p>Simula cuando una HU pasa a estado Done / Completada.</p>
+                <button class="btn btn-secondary btn-test" data-category="HU_DONE">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar HU Finalizada
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon hu-impediment" style="background: rgba(239, 68, 68, 0.2); color: #F87171; border: 1px solid rgba(239, 68, 68, 0.4);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <h3>8. HU con Impedimento (ROJO)</h3>
+                <p>Simula una HU bloqueada o con impedimento reportado.</p>
+                <button class="btn btn-secondary btn-test" data-category="HU_IMPEDIMENT">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar HU Impedimento
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon hu-stage" style="background: rgba(6, 182, 212, 0.2); color: #22D3EE; border: 1px solid rgba(6, 182, 212, 0.4);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                </div>
+                <h3>9. HU en Stage (CIAN)</h3>
+                <p>Simula una HU desplegada en ambiente Stage.</p>
+                <button class="btn btn-secondary btn-test" data-category="HU_STAGE">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar HU en Stage
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon hu">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                </div>
+                <h3>10. HU Actualizada / General (AZUL)</h3>
+                <p>Simula cualquier otro cambio de estado de una HU.</p>
+                <button class="btn btn-secondary btn-test" data-category="HU">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar HU General
+                </button>
+              </div>
+
+              <div class="tester-card">
+                <div class="tester-icon hu-assigned" style="background: rgba(99, 102, 241, 0.2); color: #818CF8; border: 1px solid rgba(99, 102, 241, 0.4);">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6"/><path d="M22 11h-6"/></svg>
+                </div>
+                <h3>11. HU Asignada a Ti (ÍNDIGO)</h3>
+                <p>Simula cuando una HU es asignada o reasignada a tu nombre (Responsable QA, etc.).</p>
+                <button class="btn btn-secondary btn-test" data-category="HU_ASSIGNED">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                  Probar Asignación HU
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 4: Historial de Alertas -->
+        <section id="tab-history" class="tab-page">
+          <div class="card glass-card">
+            <div class="card-header flex-between">
+              <div>
+                <h2>Historial de Notificaciones</h2>
+                <p>Registro de las últimas alertas detectadas por la extensión.</p>
+              </div>
+              <div class="header-actions">
+                <button id="btnMarkSelectedRead" class="btn btn-secondary hidden">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  Marcar Leídos (<span id="selectedReadCount">0</span>)
+                </button>
+                <button id="btnDeleteSelected" class="btn btn-outline-danger hidden">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  Eliminar Seleccionados (<span id="selectedCount">0</span>)
+                </button>
+                <button id="btnMarkAllRead" class="btn btn-secondary">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  Marcar Todo Leído
+                </button>
+                <button id="btnClearHistory" class="btn btn-outline-danger">
+                  Limpiar Todo
+                </button>
+              </div>
+            </div>
+
+            <div class="filter-bar flex-between">
+              <div class="filter-chips">
+                <button class="chip active" data-filter="all">Todos</button>
+                <button class="chip chip-unread" data-filter="unread">🔴 Sin Leer</button>
+                <button class="chip" data-filter="HU_ASSIGNED">HUs Asignadas (Índigo)</button>
+                <button class="chip" data-filter="BUG_NEW">Bugs Nuevos (Azul)</button>
+                <button class="chip" data-filter="BUG_QA">Bugs QA (Amarillo)</button>
+                <button class="chip" data-filter="BUG_DONE">Bugs Done (Verde)</button>
+                <button class="chip" data-filter="BUG_REOPEN">Bugs Reabiertos (Morado)</button>
+                <button class="chip" data-filter="HU_QA">HUs en QA (Amarillo)</button>
+                <button class="chip" data-filter="HU_REVIEW_PO">HUs Review PO (Morado)</button>
+                <button class="chip" data-filter="HU_DONE">HUs Done (Verde)</button>
+                <button class="chip" data-filter="HU_IMPEDIMENT">HUs Impedimento (Rojo)</button>
+                <button class="chip" data-filter="HU_STAGE">HUs Stage (Cian)</button>
+                <button class="chip" data-filter="HU">Otras HUs (Azul)</button>
+              </div>
+
+              <label class="checkbox-label">
+                <input type="checkbox" id="chkSelectAllHistory">
+                <span>Seleccionar Todos</span>
+              </label>
+            </div>
+
+            <div class="history-list-wrapper">
+              <ul id="historyList" class="history-list">
+                <!-- Se llena dinámicamente -->
+              </ul>
+              <div id="historyEmptyState" class="empty-state">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                <p>No se han registrado notificaciones aún.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab 5: Guía PAT -->
+        <section id="tab-guide" class="tab-page">
+          <div class="card glass-card">
+            <div class="card-header">
+              <h2>Cómo Generar tu Personal Access Token (PAT)</h2>
+              <p>Sigue estos sencillos pasos para crear la llave de acceso en Azure DevOps.</p>
+            </div>
+
+            <div class="guide-steps">
+              <div class="guide-step">
+                <div class="step-num">1</div>
+                <div class="step-content">
+                  <h3>Inicia sesión en Azure DevOps</h3>
+                  <p>Abre <a href="https://dev.azure.com" target="_blank" class="link-glow">https://dev.azure.com</a> e ingresa con tu cuenta.</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-num">2</div>
+                <div class="step-content">
+                  <h3>Abre la Configuración del Usuario</h3>
+                  <p>En la esquina superior derecha, haz clic en el icono de <strong>User Settings</strong> (junto a tu foto) y selecciona <strong>Personal access tokens</strong>.</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-num">3</div>
+                <div class="step-content">
+                  <h3>Crea un Nuevo Token (+ New Token)</h3>
+                  <p>Asigna un nombre descriptivo (ej. <em>"Extension Notificaciones Browser"</em>) y ajusta la fecha de expiración.</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-num">4</div>
+                <div class="step-content">
+                  <h3>Selecciona los Permisos Requeridos</h3>
+                  <p>En la sección de Scopes, busca <strong>Work Items</strong> y marca únicamente la casilla de <strong>Read</strong> (Lectura).</p>
+                </div>
+              </div>
+
+              <div class="guide-step">
+                <div class="step-num">5</div>
+                <div class="step-content">
+                  <h3>Copia el Token Generado</h3>
+                  <p>Haz clic en <strong>Create</strong> y copia el código alfanumérico generado para pegarlo en la pestaña de Credenciales de esta extensión.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

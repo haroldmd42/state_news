@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Azure DevOps Notifier",
+  "short_name": "ADO Notifier",
+  "version": "1.0.2",
+  "description": "Notificaciones flotantes en tiempo real para Historias de Usuario y Bugs en Azure DevOps.",
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "notifications",
+    "alarms",
+    "activeTab",
+    "scripting",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://dev.azure.com/*",
+    "https://*.visualstudio.com/*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Azure DevOps Notifier",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content-script.js"],
+      "css": ["content/toast.css"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*", "content/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
