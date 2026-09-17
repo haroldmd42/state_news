@@ -62,7 +62,7 @@ function removeAccents(str) {
     .trim();
 }
 
-// Token-based fuzzy matcher supporting inverted names (e.g. "Munoz Dominguez, Yan Harold" vs "Yan Harold Munoz")
+// Token-based fuzzy matcher supporting inverted names (e.g. "Perez Gomez, Juan Carlos" vs "Juan Carlos Perez")
 function isTextMatch(text, filter) {
   if (!text || !filter) return false;
   const t = removeAccents(text);
@@ -72,7 +72,7 @@ function isTextMatch(text, filter) {
   // 1. Exact or substring match
   if (t === f || t.includes(f) || f.includes(t)) return true;
 
-  // 2. Email match (e.g. yan.munoz in yan.munoz@empresa.com)
+  // 2. Email match (e.g. juan.perez in juan.perez@empresa.com)
   if (f.includes('@') || t.includes('@')) {
     const fUser = f.split('@')[0].replace(/[^a-z0-9]/g, '');
     const tUser = t.split('@')[0].replace(/[^a-z0-9]/g, '');
@@ -1233,80 +1233,80 @@ async function handleTestNotification(category = 'HU') {
   const mockNotifs = {
     HU: {
       category: 'HU',
-      workItemId: 269671,
-      title: '[HU ACTUALIZADA] HU-166 - Consultar información del estudiante (#269671)',
-      message: 'HU cambió de estado: "New" ➔ "Committed" • QA: Yan Harold Munoz Dominguez • Asignado: Hernando Nuñez Pinzón',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/269671`
+      workItemId: 100001,
+      title: '[HU ACTUALIZADA] HU-101 - Consultar información de usuario (#100001)',
+      message: 'HU cambió de estado: "New" ➔ "Committed" • QA: Juan Pérez • Asignado: Carlos Rodríguez',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/100001`
     },
     HU_QA: {
       category: 'HU_QA',
-      workItemId: 269671,
-      title: '[HU EN QA] HU-166 - Consultar información del estudiante (#269671)',
-      message: 'HU pasó a QA (Estado: "Qa") • Cambio: "Committed" ➔ "Qa" • QA: Yan Harold Munoz Dominguez • Asignado: Hernando Nuñez Pinzón',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/269671`
+      workItemId: 100001,
+      title: '[HU EN QA] HU-101 - Consultar información de usuario (#100001)',
+      message: 'HU pasó a QA (Estado: "Qa") • Cambio: "Committed" ➔ "Qa" • QA: Juan Pérez • Asignado: Carlos Rodríguez',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/100001`
     },
     HU_REVIEW_PO: {
       category: 'HU_REVIEW_PO',
-      workItemId: 269671,
-      title: '[HU EN REVIEW PO] HU-166 - Consultar información del estudiante (#269671)',
-      message: 'HU pasó a Review PO (Estado: "Review PO") • Cambio: "Qa" ➔ "Review PO" • QA: Yan Harold Munoz Dominguez',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/269671`
+      workItemId: 100001,
+      title: '[HU EN REVIEW PO] HU-101 - Consultar información de usuario (#100001)',
+      message: 'HU pasó a Review PO (Estado: "Review PO") • Cambio: "Qa" ➔ "Review PO" • QA: Juan Pérez',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/100001`
     },
     HU_DONE: {
       category: 'HU_DONE',
-      workItemId: 269671,
-      title: '[HU FINALIZADA] HU-166 - Consultar información del estudiante (#269671)',
-      message: '¡HU COMPLETADA / FINALIZADA! Estado: "Done" • Cambio: "In Stage" ➔ "Done" • QA: Yan Harold Munoz Dominguez',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/269671`
+      workItemId: 100001,
+      title: '[HU FINALIZADA] HU-101 - Consultar información de usuario (#100001)',
+      message: '¡HU COMPLETADA / FINALIZADA! Estado: "Done" • Cambio: "In Stage" ➔ "Done" • QA: Juan Pérez',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/100001`
     },
     HU_IMPEDIMENT: {
       category: 'HU_IMPEDIMENT',
-      workItemId: 269671,
-      title: '[HU CON IMPEDIMENTO] HU-166 - Consultar información del estudiante (#269671)',
-      message: '¡ALERTA! HU bloqueada con Impedimento (Estado: "Impediment") • QA: Yan Harold Munoz Dominguez',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/269671`
+      workItemId: 100001,
+      title: '[HU CON IMPEDIMENTO] HU-101 - Consultar información de usuario (#100001)',
+      message: '¡ALERTA! HU bloqueada con Impedimento (Estado: "Impediment") • QA: Juan Pérez',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/100001`
     },
     HU_STAGE: {
       category: 'HU_STAGE',
-      workItemId: 269671,
-      title: '[HU EN STAGE] HU-166 - Consultar información del estudiante (#269671)',
-      message: 'HU desplegada en ambiente Stage (Estado: "In Stage") • QA: Yan Harold Munoz Dominguez',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/269671`
+      workItemId: 100001,
+      title: '[HU EN STAGE] HU-101 - Consultar información de usuario (#100001)',
+      message: 'HU desplegada en ambiente Stage (Estado: "In Stage") • QA: Juan Pérez',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/100001`
     },
     HU_ASSIGNED: {
       category: 'HU_ASSIGNED',
-      workItemId: 274947,
-      title: '[HU ASIGNADA A TI] HU-PW-088 - Visualizar página de inicio (#274947)',
-      message: '¡Se te asignó como Responsable QA! (Anterior: "Sin QA") • Estado: "Qa" • Asignado: Hans Stivens Ovalle Ortega',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/274947`
+      workItemId: 100002,
+      title: '[HU ASIGNADA A TI] HU-088 - Visualizar página de inicio (#100002)',
+      message: '¡Se te asignó como Responsable QA! (Anterior: "Sin QA") • Estado: "Qa" • Asignado: Juan Pérez',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/100002`
     },
     BUG_NEW: {
       category: 'BUG_NEW',
-      workItemId: 278187,
-      title: '[NUEVO BUG] Bug #278187 (NEW)',
-      message: 'Nuevo Bug #278187 reportado en estado "New"\n"HU175-Al presionar icono de volver hacia atras no redirige..."',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/278187`
+      workItemId: 200001,
+      title: '[NUEVO BUG] Bug #200001 (NEW)',
+      message: 'Nuevo Bug #200001 reportado en estado "New"\n"Error en inicio de sesión al ingresar credenciales..."',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/200001`
     },
     BUG_QA: {
       category: 'BUG_QA',
-      workItemId: 278187,
-      title: '[BUG EN QA] Bug #278187 (Qa)',
-      message: 'Bug #278187 pasó a estado de QA ("Qa")\n"HU175-Al presionar icono de volver hacia atras no redirige..."',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/278187`
+      workItemId: 200001,
+      title: '[BUG EN QA] Bug #200001 (Qa)',
+      message: 'Bug #200001 pasó a estado de QA ("Qa")\n"Error en inicio de sesión al ingresar credenciales..."',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/200001`
     },
     BUG_DONE: {
       category: 'BUG_DONE',
-      workItemId: 278187,
-      title: '[BUG CERRADO] Bug #278187 (Done)',
-      message: '¡Bug #278187 ha sido CERRADO y COMPLETADO! Estado: "Done"\n"HU175-Al presionar icono de volver hacia atras no redirige..."',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/278187`
+      workItemId: 200001,
+      title: '[BUG CERRADO] Bug #200001 (Done)',
+      message: '¡Bug #200001 ha sido CERRADO y COMPLETADO! Estado: "Done"\n"Error en inicio de sesión al ingresar credenciales..."',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/200001`
     },
     BUG_REOPEN: {
       category: 'BUG_REOPEN',
-      workItemId: 278187,
-      title: '[BUG REABIERTO] Bug #278187 (Reopened)',
-      message: 'Bug #278187 ha sido REABIERTO (Estado: "Reopened")\n"HU175-Al presionar icono de volver hacia atras no redirige..."',
-      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/278187`
+      workItemId: 200001,
+      title: '[BUG REABIERTO] Bug #200001 (Reopened)',
+      message: 'Bug #200001 ha sido REABIERTO (Estado: "Reopened")\n"Error en inicio de sesión al ingresar credenciales..."',
+      url: `https://dev.azure.com/${org}/${project}/_workitems/edit/200001`
     }
   };
 
