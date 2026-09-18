@@ -196,7 +196,7 @@ chrome.runtime.onInstalled.addListener(async () => {
   console.log('[ADO Notifier] Service Worker instalado');
   const stored = await chrome.storage.local.get(['settings', 'history']);
   if (!stored.settings) {
-    await chrome.storage.local.set({ settings: DEFAULT_SETTINGS, workItemsCache: {}, history: [] });
+    await chrome.storage.local.set({ settings: DEFAULT_SETTINGS, workItemsCache: {}, notifiedStates: {}, history: [] });
   } else {
     // Migrate existing settings to include any new state mappings and filter preference
     const currentMappings = stored.settings.stateMappings || {};
@@ -373,12 +373,61 @@ function isUserMatch(val, userFilter) {
   return isTextMatch(String(val), userFilter);
 }
 
+// Main Update Checker & Concurrency Lock
+let isCheckingUpdates = false;
+
+// Helper to determine if a work item has already been notified for a specific state
+function hasAlreadyBeenNotifiedForState(id, cleanTargetState, cachedItem, notifiedStatesMap, currentHistory) {
+  if (!cleanTargetState) return false;
+  const target = removeAccents(String(cleanTargetState)).trim();
+  const strId = String(id);
+
+  // 1. Check persistent notifiedStates map
+  if (notifiedStatesMap) {
+    const mapped = notifiedStatesMap[id] || notifiedStatesMap[strId];
+    if (mapped && removeAccents(String(mapped)).trim() === target) {
+      return true;
+    }
+  }
+
+  // 2. Check cached work item's lastNotifiedState
+  if (cachedItem && cachedItem.lastNotifiedState) {
+    if (removeAccents(String(cachedItem.lastNotifiedState)).trim() === target) {
+      return true;
+    }
+  }
+
+  // 3. Check history list in storage
+  if (Array.isArray(currentHistory)) {
+    const inHistory = currentHistory.some(h =>
+      (String(h.workItemId) === strId) &&
+      removeAccents(String(h.state || '')).trim() === target
+    );
+    if (inHistory) return true;
+  }
+
+  return false;
+}
+
 // Main Update Checker
 async function checkForUpdates() {
+  if (isCheckingUpdates) {
+    console.log('[ADO Notifier] Ya hay una verificación en curso. Omitiendo ejecución concurrente.');
+    return { success: true, message: 'Verificación en progreso', updatedCount: 0 };
+  }
+  isCheckingUpdates = true;
+
   console.log('[ADO Notifier] Ejecutando verificación de actualizaciones...');
-  const { settings: rawSettings = {}, workItemsCache = {}, history = [], isInitialized } = await chrome.storage.local.get([
+  const {
+    settings: rawSettings = {},
+    workItemsCache = {},
+    notifiedStates = {},
+    history = [],
+    isInitialized
+  } = await chrome.storage.local.get([
     'settings',
     'workItemsCache',
+    'notifiedStates',
     'history',
     'isInitialized'
   ]);
@@ -395,6 +444,7 @@ async function checkForUpdates() {
 
   if (!settings.org || !settings.project || !settings.pat) {
     console.log('[ADO Notifier] Credenciales incompletas en la configuración.');
+    isCheckingUpdates = false;
     return { success: false, message: 'Por favor completa Organización, Proyecto y Personal Access Token (PAT) en la pestaña Credenciales.' };
   }
 
@@ -461,6 +511,7 @@ async function checkForUpdates() {
     const items = detailsData.value || [];
 
     const newCache = { ...workItemsCache };
+    const newNotifiedStates = { ...notifiedStates };
     const notificationsToTrigger = [];
     const updatedHistory = [...history];
 
@@ -525,7 +576,7 @@ async function checkForUpdates() {
       // For Bugs: always require user association
       const isBugShouldNotify = isBug && isUserAssociated;
 
-      const cleanState = removeAccents(state);
+      const cleanState = removeAccents(state).trim();
 
       // Precise State Mapping for BUGS
       const isDoneState = doneStates.some(s => removeAccents(s) === cleanState) ||
@@ -578,8 +629,10 @@ async function checkForUpdates() {
       const isHuCommittedState = committedHuStates.some(s => removeAccents(s) === cleanState) || cleanState.includes('commit') || cleanState.includes('progress') || cleanState.includes('desarrollo') || cleanState.includes('approv');
 
       if (!isFirstBaseline) {
+        const alreadyNotifiedForThisState = hasAlreadyBeenNotifiedForState(id, cleanState, cached, newNotifiedStates, updatedHistory);
+
         if (cached) {
-          const stateChanged = removeAccents(cached.state) !== cleanState;
+          const stateChanged = removeAccents(cached.state).trim() !== cleanState;
           const prevRoles = cached.roles || {
             assignedTo: cached.assignedTo,
             responsibleQA: cached.responsibleQA,
@@ -660,150 +713,162 @@ async function checkForUpdates() {
           // Case B: State changed
           // - HUs: notify if filterHUByUser=false OR user is associated
           // - Bugs: always requires user association
+          // Dedup guard: Only notify if not already notified for this exact state
           else if (stateChanged && (isHuShouldNotify || isBugShouldNotify)) {
-            // Rule 1: Product Backlog Item (HU) Transitions
-            if (isHU && isHuShouldNotify) {
-              let roleDetails = '';
-              if (currentRoles.responsibleQA) roleDetails += ` • QA: ${currentRoles.responsibleQA}`;
-              if (currentRoles.assignedTo) roleDetails += ` • Asignado: ${currentRoles.assignedTo}`;
-              if (currentRoles.responsibleBackend) roleDetails += ` • Backend: ${currentRoles.responsibleBackend}`;
-              if (currentRoles.responsibleMaquetacion) roleDetails += ` • Maq: ${currentRoles.responsibleMaquetacion}`;
-              if (currentRoles.responsibleIntegrador) roleDetails += ` • Integ: ${currentRoles.responsibleIntegrador}`;
+            if (alreadyNotifiedForThisState) {
+              console.log(`[ADO Notifier] Dedup (cached): Ya se notificó #${id} para estado "${state}". Omitiendo notificación.`);
+            } else {
+              // Rule 1: Product Backlog Item (HU) Transitions
+              if (isHU && isHuShouldNotify) {
+                let roleDetails = '';
+                if (currentRoles.responsibleQA) roleDetails += ` • QA: ${currentRoles.responsibleQA}`;
+                if (currentRoles.assignedTo) roleDetails += ` • Asignado: ${currentRoles.assignedTo}`;
+                if (currentRoles.responsibleBackend) roleDetails += ` • Backend: ${currentRoles.responsibleBackend}`;
+                if (currentRoles.responsibleMaquetacion) roleDetails += ` • Maq: ${currentRoles.responsibleMaquetacion}`;
+                if (currentRoles.responsibleIntegrador) roleDetails += ` • Integ: ${currentRoles.responsibleIntegrador}`;
 
-              if (isHuReviewPoState) {
-                notificationCategory = 'HU_REVIEW_PO'; // Purple
-                notificationTitle = `[HU EN REVIEW PO] ${title} (#${id})`;
-                notificationReason = `HU pasó a Review PO (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else if (isHuQaState) {
-                notificationCategory = 'HU_QA'; // Yellow
-                notificationTitle = `[HU EN QA] ${title} (#${id})`;
-                notificationReason = `HU pasó a QA (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else if (isHuDoneState) {
-                notificationCategory = 'HU_DONE'; // Green
-                notificationTitle = `[HU FINALIZADA] ${title} (#${id})`;
-                notificationReason = `¡HU completada / Done! Estado: "${state}" • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else if (isHuImpedimentState) {
-                notificationCategory = 'HU_IMPEDIMENT'; // Red
-                notificationTitle = `[HU CON IMPEDIMENTO] ${title} (#${id})`;
-                notificationReason = `¡ALERTA! HU con Impedimento (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else if (isHuStageState) {
-                notificationCategory = 'HU_STAGE'; // Cyan
-                notificationTitle = `[HU EN STAGE] ${title} (#${id})`;
-                notificationReason = `HU en ambiente Stage (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else if (isHuCommittedState) {
-                notificationCategory = 'HU_COMMITTED'; // Blue
-                notificationTitle = `[HU EN PROGRESO] ${title} (#${id})`;
-                notificationReason = `HU en desarrollo / progreso (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else {
-                notificationCategory = 'HU'; // Blue
-                notificationTitle = `[HU ACTUALIZADA] ${title} (#${id})`;
-                notificationReason = `HU cambió de estado: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                if (isHuReviewPoState) {
+                  notificationCategory = 'HU_REVIEW_PO'; // Purple
+                  notificationTitle = `[HU EN REVIEW PO] ${title} (#${id})`;
+                  notificationReason = `HU pasó a Review PO (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else if (isHuQaState) {
+                  notificationCategory = 'HU_QA'; // Yellow
+                  notificationTitle = `[HU EN QA] ${title} (#${id})`;
+                  notificationReason = `HU pasó a QA (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else if (isHuDoneState) {
+                  notificationCategory = 'HU_DONE'; // Green
+                  notificationTitle = `[HU FINALIZADA] ${title} (#${id})`;
+                  notificationReason = `¡HU completada / Done! Estado: "${state}" • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else if (isHuImpedimentState) {
+                  notificationCategory = 'HU_IMPEDIMENT'; // Red
+                  notificationTitle = `[HU CON IMPEDIMENTO] ${title} (#${id})`;
+                  notificationReason = `¡ALERTA! HU con Impedimento (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else if (isHuStageState) {
+                  notificationCategory = 'HU_STAGE'; // Cyan
+                  notificationTitle = `[HU EN STAGE] ${title} (#${id})`;
+                  notificationReason = `HU en ambiente Stage (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else if (isHuCommittedState) {
+                  notificationCategory = 'HU_COMMITTED'; // Blue
+                  notificationTitle = `[HU EN PROGRESO] ${title} (#${id})`;
+                  notificationReason = `HU en desarrollo / progreso (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else {
+                  notificationCategory = 'HU'; // Blue
+                  notificationTitle = `[HU ACTUALIZADA] ${title} (#${id})`;
+                  notificationReason = `HU cambió de estado: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                }
               }
-            }
 
-            // Rule 2: Bug transitions with EXACT Color Categories
-            if (isBug && isBugShouldNotify) {
-              let roleDetails = '';
-              if (currentRoles.responsibleQA) roleDetails += ` • QA: ${currentRoles.responsibleQA}`;
-              if (currentRoles.assignedTo) roleDetails += ` • Asignado: ${currentRoles.assignedTo}`;
+              // Rule 2: Bug transitions with EXACT Color Categories
+              if (isBug && isBugShouldNotify) {
+                let roleDetails = '';
+                if (currentRoles.responsibleQA) roleDetails += ` • QA: ${currentRoles.responsibleQA}`;
+                if (currentRoles.assignedTo) roleDetails += ` • Asignado: ${currentRoles.assignedTo}`;
 
-              if (isDoneState) {
-                notificationCategory = 'BUG_DONE'; // Green
-                notificationTitle = `[BUG CERRADO] ${title} (#${id})`;
-                notificationReason = `¡Bug #${id} CERRADO / FINALIZADO! Estado: "${state}" • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else if (isQaState) {
-                notificationCategory = 'BUG_QA'; // Yellow
-                notificationTitle = `[BUG EN QA] ${title} (#${id})`;
-                notificationReason = `Bug #${id} pasó a estado de QA (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else if (isReopenState) {
-                notificationCategory = 'BUG_REOPEN'; // Purple
-                notificationTitle = `[BUG REABIERTO] ${title} (#${id})`;
-                notificationReason = `Bug #${id} ha sido REABIERTO (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else if (isNewState) {
-                notificationCategory = 'BUG_NEW'; // Blue
-                notificationTitle = `[NUEVO BUG] ${title} (#${id})`;
-                notificationReason = `Bug #${id} cambió a estado New (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
-              } else {
-                notificationCategory = 'BUG_NEW'; // Blue
-                notificationTitle = `[BUG ACTUALIZADO] ${title} (#${id})`;
-                notificationReason = `Bug #${id} cambió de estado: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                if (isDoneState) {
+                  notificationCategory = 'BUG_DONE'; // Green
+                  notificationTitle = `[BUG CERRADO] ${title} (#${id})`;
+                  notificationReason = `¡Bug #${id} CERRADO / FINALIZADO! Estado: "${state}" • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else if (isQaState) {
+                  notificationCategory = 'BUG_QA'; // Yellow
+                  notificationTitle = `[BUG EN QA] ${title} (#${id})`;
+                  notificationReason = `Bug #${id} pasó a estado de QA (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else if (isReopenState) {
+                  notificationCategory = 'BUG_REOPEN'; // Purple
+                  notificationTitle = `[BUG REABIERTO] ${title} (#${id})`;
+                  notificationReason = `Bug #${id} ha sido REABIERTO (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else if (isNewState) {
+                  notificationCategory = 'BUG_NEW'; // Blue
+                  notificationTitle = `[NUEVO BUG] ${title} (#${id})`;
+                  notificationReason = `Bug #${id} cambió a estado New (Estado: "${state}") • Cambio: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                } else {
+                  notificationCategory = 'BUG_NEW'; // Blue
+                  notificationTitle = `[BUG ACTUALIZADO] ${title} (#${id})`;
+                  notificationReason = `Bug #${id} cambió de estado: "${cached.state}" ➔ "${state}"${roleDetails}`;
+                }
               }
             }
           }
         } else if (isHuShouldNotify || isBugShouldNotify) {
-          // Uncached item path: only notify if freshly created (last 15 min)
-          // Dedup guard: skip if we already notified for this exact state
-          // (handles cache misses/pruning between polls)
-          const prevNotifiedState = workItemsCache[id]?.lastNotifiedState ?? null;
-          const alreadyNotifiedForThisState = prevNotifiedState && removeAccents(prevNotifiedState) === cleanState;
-          const createdDateStr = item.fields['System.CreatedDate'] || '';
-          const createdTime = createdDateStr ? new Date(createdDateStr).getTime() : 0;
-          const isNewlyCreated = createdTime > 0 && (Date.now() - createdTime) < (15 * 60 * 1000);
+          // Uncached item path: only notify if freshly created (last 15 min) and NOT already notified for this state
+          if (alreadyNotifiedForThisState) {
+            console.log(`[ADO Notifier] Dedup (uncached): Ya se notificó #${id} para estado "${state}". Omitiendo notificación.`);
+          } else {
+            const createdDateStr = item.fields['System.CreatedDate'] || '';
+            const createdTime = createdDateStr ? new Date(createdDateStr).getTime() : 0;
+            const isNewlyCreated = createdTime > 0 && (Date.now() - createdTime) < (15 * 60 * 1000);
 
-          if (!alreadyNotifiedForThisState && isNewlyCreated) {
-            if (isBug && isBugShouldNotify) {
-              let roleDetails = '';
-              if (currentRoles.responsibleQA) roleDetails += ` • QA: ${currentRoles.responsibleQA}`;
-              if (currentRoles.assignedTo) roleDetails += ` • Asignado: ${currentRoles.assignedTo}`;
+            if (isNewlyCreated) {
+              if (isBug && isBugShouldNotify) {
+                let roleDetails = '';
+                if (currentRoles.responsibleQA) roleDetails += ` • QA: ${currentRoles.responsibleQA}`;
+                if (currentRoles.assignedTo) roleDetails += ` • Asignado: ${currentRoles.assignedTo}`;
 
-              if (isDoneState) {
-                notificationCategory = 'BUG_DONE';
-                notificationTitle = `[BUG CERRADO] ${title} (#${id})`;
-                notificationReason = `Bug #${id} detectado cerrado en estado "${state}"${roleDetails}`;
-              } else if (isQaState) {
-                notificationCategory = 'BUG_QA';
-                notificationTitle = `[BUG EN QA] ${title} (#${id})`;
-                notificationReason = `Bug #${id} detectado en QA, estado "${state}"${roleDetails}`;
-              } else if (isReopenState) {
-                notificationCategory = 'BUG_REOPEN';
-                notificationTitle = `[BUG REABIERTO] ${title} (#${id})`;
-                notificationReason = `Bug #${id} detectado reabierto, estado "${state}"${roleDetails}`;
-              } else {
-                notificationCategory = 'BUG_NEW';
-                notificationTitle = `[NUEVO BUG] ${title} (#${id})`;
-                notificationReason = `Nuevo Bug #${id} recién creado en estado "${state}"${roleDetails}`;
-              }
-            } else if (isHU && isHuShouldNotify) {
-              let roleDetails = '';
-              if (currentRoles.responsibleQA) roleDetails += ` • QA: ${currentRoles.responsibleQA}`;
-              if (currentRoles.assignedTo) roleDetails += ` • Asignado: ${currentRoles.assignedTo}`;
-              if (currentRoles.responsibleBackend) roleDetails += ` • Backend: ${currentRoles.responsibleBackend}`;
+                if (isDoneState) {
+                  notificationCategory = 'BUG_DONE';
+                  notificationTitle = `[BUG CERRADO] ${title} (#${id})`;
+                  notificationReason = `Bug #${id} detectado cerrado en estado "${state}"${roleDetails}`;
+                } else if (isQaState) {
+                  notificationCategory = 'BUG_QA';
+                  notificationTitle = `[BUG EN QA] ${title} (#${id})`;
+                  notificationReason = `Bug #${id} detectado en QA, estado "${state}"${roleDetails}`;
+                } else if (isReopenState) {
+                  notificationCategory = 'BUG_REOPEN';
+                  notificationTitle = `[BUG REABIERTO] ${title} (#${id})`;
+                  notificationReason = `Bug #${id} detectado reabierto, estado "${state}"${roleDetails}`;
+                } else {
+                  notificationCategory = 'BUG_NEW';
+                  notificationTitle = `[NUEVO BUG] ${title} (#${id})`;
+                  notificationReason = `Nuevo Bug #${id} recién creado en estado "${state}"${roleDetails}`;
+                }
+              } else if (isHU && isHuShouldNotify) {
+                let roleDetails = '';
+                if (currentRoles.responsibleQA) roleDetails += ` • QA: ${currentRoles.responsibleQA}`;
+                if (currentRoles.assignedTo) roleDetails += ` • Asignado: ${currentRoles.assignedTo}`;
+                if (currentRoles.responsibleBackend) roleDetails += ` • Backend: ${currentRoles.responsibleBackend}`;
 
-              if (isHuReviewPoState) {
-                notificationCategory = 'HU_REVIEW_PO';
-                notificationTitle = `[HU EN REVIEW PO] ${title} (#${id})`;
-                notificationReason = `Nueva HU #${id} detectada en Review PO, estado "${state}"${roleDetails}`;
-              } else if (isHuQaState) {
-                notificationCategory = 'HU_QA';
-                notificationTitle = `[HU EN QA] ${title} (#${id})`;
-                notificationReason = `Nueva HU #${id} detectada en QA, estado "${state}"${roleDetails}`;
-              } else if (isHuDoneState) {
-                notificationCategory = 'HU_DONE';
-                notificationTitle = `[HU FINALIZADA] ${title} (#${id})`;
-                notificationReason = `Nueva HU #${id} detectada finalizada, estado "${state}"${roleDetails}`;
-              } else if (isHuImpedimentState) {
-                notificationCategory = 'HU_IMPEDIMENT';
-                notificationTitle = `[HU CON IMPEDIMENTO] ${title} (#${id})`;
-                notificationReason = `Nueva HU #${id} detectada con impedimento, estado "${state}"${roleDetails}`;
-              } else if (isHuStageState) {
-                notificationCategory = 'HU_STAGE';
-                notificationTitle = `[HU EN STAGE] ${title} (#${id})`;
-                notificationReason = `Nueva HU #${id} detectada en Stage, estado "${state}"${roleDetails}`;
-              } else if (isHuCommittedState) {
-                notificationCategory = 'HU_COMMITTED';
-                notificationTitle = `[HU EN PROGRESO] ${title} (#${id})`;
-                notificationReason = `Nueva HU #${id} detectada en progreso, estado "${state}"${roleDetails}`;
-              } else {
-                notificationCategory = 'HU';
-                notificationTitle = `[NUEVA HU CREADA] ${title} (#${id})`;
-                notificationReason = `Nueva HU #${id} recién creada en estado "${state}"${roleDetails}`;
+                if (isHuReviewPoState) {
+                  notificationCategory = 'HU_REVIEW_PO';
+                  notificationTitle = `[HU EN REVIEW PO] ${title} (#${id})`;
+                  notificationReason = `Nueva HU #${id} detectada en Review PO, estado "${state}"${roleDetails}`;
+                } else if (isHuQaState) {
+                  notificationCategory = 'HU_QA';
+                  notificationTitle = `[HU EN QA] ${title} (#${id})`;
+                  notificationReason = `Nueva HU #${id} detectada en QA, estado "${state}"${roleDetails}`;
+                } else if (isHuDoneState) {
+                  notificationCategory = 'HU_DONE';
+                  notificationTitle = `[HU FINALIZADA] ${title} (#${id})`;
+                  notificationReason = `Nueva HU #${id} detectada finalizada, estado "${state}"${roleDetails}`;
+                } else if (isHuImpedimentState) {
+                  notificationCategory = 'HU_IMPEDIMENT';
+                  notificationTitle = `[HU CON IMPEDIMENTO] ${title} (#${id})`;
+                  notificationReason = `Nueva HU #${id} detectada con impedimento, estado "${state}"${roleDetails}`;
+                } else if (isHuStageState) {
+                  notificationCategory = 'HU_STAGE';
+                  notificationTitle = `[HU EN STAGE] ${title} (#${id})`;
+                  notificationReason = `Nueva HU #${id} detectada en Stage, estado "${state}"${roleDetails}`;
+                } else if (isHuCommittedState) {
+                  notificationCategory = 'HU_COMMITTED';
+                  notificationTitle = `[HU EN PROGRESO] ${title} (#${id})`;
+                  notificationReason = `Nueva HU #${id} detectada en progreso, estado "${state}"${roleDetails}`;
+                } else {
+                  notificationCategory = 'HU';
+                  notificationTitle = `[NUEVA HU CREADA] ${title} (#${id})`;
+                  notificationReason = `Nueva HU #${id} recién creada en estado "${state}"${roleDetails}`;
+                }
               }
             }
-          } else if (alreadyNotifiedForThisState) {
-            console.log(`[ADO Notifier] Dedup (uncached): Ya se notificó #${id} para estado "${state}". Saltando.`);
           }
         }
+      } else {
+        // First baseline: acknowledge current state in notifiedStates map so it never triggers on next poll
+        newNotifiedStates[id] = cleanState;
+        newNotifiedStates[String(id)] = cleanState;
       } // end if (!isFirstBaseline)
+
+      // Determine the last notified state for cache tracking
+      const itemLastNotifiedState = notificationReason
+        ? state
+        : (cached?.lastNotifiedState ?? (isFirstBaseline ? state : null));
 
       // Update Cache Entry with all roles + lastNotifiedState for deduplication
       newCache[id] = {
@@ -821,11 +886,13 @@ async function checkForUpdates() {
         otherRoles: currentRoles.otherRoles,
         url: itemUrl,
         lastSeen: new Date().toISOString(),
-        // Track the last state we notified about to prevent duplicate notifications
-        lastNotifiedState: notificationReason ? state : (cached?.lastNotifiedState ?? workItemsCache[id]?.lastNotifiedState ?? null)
+        lastNotifiedState: itemLastNotifiedState
       };
 
       if (notificationReason) {
+        newNotifiedStates[id] = cleanState;
+        newNotifiedStates[String(id)] = cleanState;
+
         const notifPayload = {
           id: `ado-${id}-${Date.now()}`,
           workItemId: id,
@@ -845,36 +912,71 @@ async function checkForUpdates() {
       }
     }
 
-    // Prune cache to keep only the 120 most recent items to avoid quota issues
-    const cacheKeys = Object.keys(newCache);
+    // Retain all items in newCache without prematurely dropping active items.
+    // Set a high ceiling (1500 items). If exceeded, prune ONLY items that were NOT
+    // in the current query batch, ordered by oldest changedDate.
+    const currentBatchIds = new Set(items.map(it => String(it.id)));
+    const allCacheKeys = Object.keys(newCache);
     let prunedCache = newCache;
-    if (cacheKeys.length > 120) {
-      const sortedKeys = cacheKeys
-        .sort((a, b) => new Date(newCache[b].lastSeen || 0) - new Date(newCache[a].lastSeen || 0))
-        .slice(0, 120);
+
+    if (allCacheKeys.length > 1500) {
+      const nonBatchKeys = allCacheKeys.filter(k => !currentBatchIds.has(String(k)));
+      nonBatchKeys.sort((a, b) => {
+        const dateA = new Date(newCache[a].changedDate || newCache[a].lastSeen || 0).getTime();
+        const dateB = new Date(newCache[b].changedDate || newCache[b].lastSeen || 0).getTime();
+        return dateA - dateB;
+      });
+      const toRemoveCount = allCacheKeys.length - 1500;
+      const keysToRemove = new Set(nonBatchKeys.slice(0, toRemoveCount));
       prunedCache = {};
-      for (const k of sortedKeys) {
-        prunedCache[k] = newCache[k];
+      for (const k of allCacheKeys) {
+        if (!keysToRemove.has(k)) {
+          prunedCache[k] = newCache[k];
+        }
       }
     }
 
-    const finalHistory = updatedHistory.slice(0, 50);
+    // Keep notifiedStates map bounded if it grows excessively
+    const notifiedKeys = Object.keys(newNotifiedStates);
+    if (notifiedKeys.length > 2500) {
+      const prunedNotified = {};
+      for (const k of Object.keys(prunedCache)) {
+        if (newNotifiedStates[k]) prunedNotified[k] = newNotifiedStates[k];
+      }
+      for (const k of Object.keys(newNotifiedStates)) {
+        if (!prunedNotified[k]) delete newNotifiedStates[k];
+      }
+    }
+
+    // Filter out duplicate notifications for the exact same workItemId and state in history
+    const seenHistoryKeys = new Set();
+    const dedupedHistory = [];
+    for (const notif of updatedHistory) {
+      const key = `${notif.workItemId}_${removeAccents(notif.state || '')}`;
+      if (!seenHistoryKeys.has(key)) {
+        seenHistoryKeys.add(key);
+        dedupedHistory.push(notif);
+      }
+    }
+    const finalHistory = dedupedHistory.slice(0, 50);
+
     try {
       await chrome.storage.local.set({
         workItemsCache: prunedCache,
+        notifiedStates: newNotifiedStates,
         history: finalHistory,
         lastSync: new Date().toISOString(),
         isInitialized: true
       });
     } catch (quotaErr) {
       console.warn('[ADO Notifier] Error guardando almacenamiento, limpiando cache previa:', quotaErr);
-      // Fallback: prune cache even further to current batch items only
       const minimalCache = {};
-      for (const item of items.slice(0, 50)) {
+      for (const item of items) {
         if (newCache[item.id]) minimalCache[item.id] = newCache[item.id];
       }
       await chrome.storage.local.set({
         workItemsCache: minimalCache,
+        notifiedStates: newNotifiedStates,
         history: finalHistory.slice(0, 25),
         lastSync: new Date().toISOString(),
         isInitialized: true
@@ -895,6 +997,8 @@ async function checkForUpdates() {
   } catch (err) {
     console.error('[ADO Notifier] Excepción en checkForUpdates:', err);
     return { success: false, message: `Error inesperado: ${err.message}` };
+  } finally {
+    isCheckingUpdates = false;
   }
 }
 
