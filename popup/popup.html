@@ -34,6 +34,26 @@
       </div>
     </header>
 
+    <!-- Top Sync & Today Work Hours Bar -->
+    <div class="top-sync-bar">
+      <div class="sync-time-badge" id="syncTimeBadge">
+        <svg class="sync-clock-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span id="topSyncText">Sync: Nunca</span>
+      </div>
+
+      <div class="today-hours-badge" id="todayHoursBadge" title="Horas de Completed Work acumuladas hoy por ti en Azure DevOps">
+        <svg class="hours-badge-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="hours-badge-label">Taskeado hoy:</span>
+        <span id="statTodayHours" class="hours-badge-val">0h</span>
+      </div>
+    </div>
+
     <!-- Connection Status Banner -->
     <div id="popupStatusBanner" class="status-banner disconnected">
       <span class="status-dot"></span>
@@ -85,7 +105,11 @@
 
     <!-- Footer -->
     <footer class="popup-footer">
-      <span id="lastSyncText">Sync: Nunca</span>
+      <div class="footer-sync-wrapper">
+        <span id="lastSyncText">Sync: Nunca</span>
+        <span class="footer-sep">•</span>
+        <span id="footerHoursText" class="footer-hours">0h hoy</span>
+      </div>
       <button id="btnGoToDashboard" class="link-btn">Portal Completo ↗</button>
     </footer>
   </div>

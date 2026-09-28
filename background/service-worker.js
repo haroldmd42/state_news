@@ -62,39 +62,47 @@ function removeAccents(str) {
     .trim();
 }
 
-// Token-based fuzzy matcher supporting inverted names (e.g. "Perez Gomez, Juan Carlos" vs "Juan Carlos Perez")
-function isTextMatch(text, filter) {
-  if (!text || !filter) return false;
-  const t = removeAccents(text);
+// Helper for email matching (exact or username match)
+function isEmailMatch(email, filter) {
+  if (!email || !filter) return false;
+  const e = removeAccents(email);
   const f = removeAccents(filter);
-  if (!t || !f) return false;
+  if (e === f || e.includes(f) || f.includes(e)) return true;
+  const eUser = e.split('@')[0].replace(/[^a-z0-9]/g, '');
+  const fUser = f.split('@')[0].replace(/[^a-z0-9]/g, '');
+  if (eUser && fUser && (eUser === fUser || eUser.includes(fUser) || fUser.includes(eUser))) return true;
+  return false;
+}
 
-  // 1. Exact or substring match
-  if (t === f || t.includes(f) || f.includes(t)) return true;
+// Name matcher supporting inverted active directory names and strict token matching
+function isNameMatch(name, filter) {
+  if (!name || !filter) return false;
+  const n = removeAccents(name);
+  const f = removeAccents(filter);
+  if (n === f) return true;
 
-  // 2. Email match (e.g. juan.perez in juan.perez@empresa.com)
-  if (f.includes('@') || t.includes('@')) {
-    const fUser = f.split('@')[0].replace(/[^a-z0-9]/g, '');
-    const tUser = t.split('@')[0].replace(/[^a-z0-9]/g, '');
-    if (fUser && tUser && (fUser.includes(tUser) || tUser.includes(fUser))) return true;
-  }
-
-  // 3. Token-based word matching (supports inverted active directory names)
-  const filterTokens = f.split(/[^a-z0-9]+/).filter(tok => tok.length >= 2);
-  const textTokens = t.split(/[^a-z0-9]+/).filter(tok => tok.length >= 2);
-
-  if (filterTokens.length === 0 || textTokens.length === 0) return false;
+  const nTokens = n.split(/[^a-z0-9]+/).filter(w => w.length >= 2);
+  const fTokens = f.split(/[^a-z0-9]+/).filter(w => w.length >= 2);
+  if (nTokens.length === 0 || fTokens.length === 0) return false;
 
   let matchCount = 0;
-  for (const ft of filterTokens) {
-    if (textTokens.some(tt => tt === ft || (tt.length > 3 && ft.includes(tt)) || (ft.length > 3 && tt.includes(ft)))) {
+  for (const ft of fTokens) {
+    if (nTokens.includes(ft)) {
       matchCount++;
     }
   }
 
-  // Require at least 2 matching words, or 1 if the filter only consists of 1 word
-  const requiredMatches = Math.min(2, filterTokens.length);
-  return matchCount >= requiredMatches;
+  const req = Math.min(2, fTokens.length);
+  return matchCount >= req && (matchCount >= Math.ceil(nTokens.length / 2));
+}
+
+// Token-based fuzzy matcher supporting inverted names
+function isTextMatch(text, filter) {
+  if (!text || !filter) return false;
+  if (text.includes('@') || filter.includes('@')) {
+    return isEmailMatch(text, filter);
+  }
+  return isNameMatch(text, filter);
 }
 
 // Helper to clean identity values while preserving ADO identity strings like "Name <email@domain.com>"
@@ -360,17 +368,245 @@ function isWorkItemBug(type, title, mappings) {
   return false;
 }
 
-// Helper to check if a value matches user filter with accents ignored and token matching
+// Helper to check if an identity value matches the user filter
 function isUserMatch(val, userFilter) {
   if (!val || !userFilter) return false;
 
   if (typeof val === 'object') {
-    const name = val.displayName || val.distinctDisplayName || val.name || '';
     const email = val.uniqueName || val.mail || val.mailAddress || val.email || '';
-    return isTextMatch(name, userFilter) || isTextMatch(email, userFilter);
+    const name = val.displayName || val.distinctDisplayName || val.name || '';
+    if (email && isEmailMatch(email, userFilter)) return true;
+    if (name && isNameMatch(name, userFilter)) return true;
+    return false;
   }
 
-  return isTextMatch(String(val), userFilter);
+  const str = String(val).trim();
+  if (str.includes('@')) {
+    if (isEmailMatch(str, userFilter)) return true;
+  }
+  return isNameMatch(str, userFilter);
+}
+
+// Strictly check if a work item is a Task (or Tarea / Sub-task)
+function isWorkItemTask(type) {
+  if (!type) return false;
+  const t = removeAccents(String(type)).trim().toLowerCase();
+  return (
+    t === 'task' ||
+    t === 'tarea' ||
+    t === 'sub-task' ||
+    t === 'subtask' ||
+    t === 'task/tarea'
+  );
+}
+
+// Helper to detect if a task is in a Done/Completed state
+function isTaskStateDone(state) {
+  if (!state) return false;
+  const clean = removeAccents(String(state)).toLowerCase().trim();
+  return (
+    clean === 'done' ||
+    clean === 'closed' ||
+    clean === 'cerrado' ||
+    clean === 'resolved' ||
+    clean === 'resuelto' ||
+    clean === 'finalizado' ||
+    clean === 'completado' ||
+    clean === 'terminado' ||
+    clean.includes('done') ||
+    clean.includes('cerrad') ||
+    clean.includes('finaliz') ||
+    clean.includes('complet') ||
+    clean.includes('finish')
+  );
+}
+
+// Extract completed work hours (handles Microsoft.VSTS.Scheduling.CompletedWork and custom fields)
+function extractCompletedWorkHours(fields) {
+  if (!fields) return 0;
+
+  if (fields['Microsoft.VSTS.Scheduling.CompletedWork'] !== undefined && fields['Microsoft.VSTS.Scheduling.CompletedWork'] !== null) {
+    const val = parseFloat(fields['Microsoft.VSTS.Scheduling.CompletedWork']);
+    if (!isNaN(val) && val > 0) return val;
+  }
+
+  if (fields['8'] !== undefined && fields['8'] !== null) {
+    const val = parseFloat(fields['8']);
+    if (!isNaN(val) && val > 0) return val;
+  }
+
+  for (const [key, val] of Object.entries(fields)) {
+    if (val === undefined || val === null) continue;
+    const lowerKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (
+      lowerKey.includes('completedwork') ||
+      lowerKey.includes('trabajocompletado') ||
+      lowerKey.includes('horascompletadas') ||
+      lowerKey.includes('horastrabajadas') ||
+      lowerKey.includes('workcompleted')
+    ) {
+      const parsed = parseFloat(val);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+  }
+
+  return 0;
+}
+
+// Helper to get local date key in YYYY-MM-DD format
+function getTodayKey(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Extract task work date strictly (checks custom Working Date / Fecha de Trabajo)
+function extractTaskDate(fields) {
+  if (!fields) return null;
+
+  // Scan strictly for custom Working Date / Fecha de Trabajo
+  for (const [key, val] of Object.entries(fields)) {
+    if (!val) continue;
+    const cleanKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (
+      cleanKey.includes('workingdate') ||
+      cleanKey.includes('fechatrabajo') ||
+      cleanKey.includes('fechatarea') ||
+      cleanKey.includes('fechaactividad') ||
+      cleanKey.includes('fecharegistro') ||
+      cleanKey.includes('workcompleteddate') ||
+      (cleanKey.includes('work') && cleanKey.includes('date'))
+    ) {
+      return val;
+    }
+  }
+
+  // Strictly DO NOT fallback to ClosedDate, StateChangeDate, CreatedDate, or ChangedDate!
+  // In Azure DevOps, logged work is strictly identified by the custom "Working Date" field.
+  return null;
+}
+
+// Universal robust date parser for Azure DevOps timestamps, custom fields, and ISO formats
+function parseAnyDate(dateVal) {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return isNaN(dateVal.getTime()) ? null : dateVal;
+  if (typeof dateVal === 'number') {
+    const d = new Date(dateVal);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof dateVal !== 'string') return null;
+  const trimmed = dateVal.trim();
+  if (!trimmed) return null;
+
+  // 1. /Date(1790113502310)/ or \/Date(1790113502310)\/
+  const dateMatch = trimmed.match(/\/Date\((\d+)\)/);
+  if (dateMatch) {
+    const d = new Date(parseInt(dateMatch[1], 10));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  // 2. DD/MM/YYYY or DD-MM-YYYY (e.g., "25/09/2026 16:02" or "25/09/2026")
+  const ddmmyyyy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (ddmmyyyy) {
+    const day = parseInt(ddmmyyyy[1], 10);
+    const month = parseInt(ddmmyyyy[2], 10) - 1;
+    const year = parseInt(ddmmyyyy[3], 10);
+    const hours = ddmmyyyy[4] ? parseInt(ddmmyyyy[4], 10) : 0;
+    const mins = ddmmyyyy[5] ? parseInt(ddmmyyyy[5], 10) : 0;
+    const secs = ddmmyyyy[6] ? parseInt(ddmmyyyy[6], 10) : 0;
+    const d = new Date(year, month, day, hours, mins, secs);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 3. YYYY-MM-DD or YYYY/MM/DD (e.g., "2026-09-25 16:02" or "2026-09-25")
+  const yyyymmdd = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (yyyymmdd) {
+    const year = parseInt(yyyymmdd[1], 10);
+    const month = parseInt(yyyymmdd[2], 10) - 1;
+    const day = parseInt(yyyymmdd[3], 10);
+    const hours = yyyymmdd[4] ? parseInt(yyyymmdd[4], 10) : 0;
+    const mins = yyyymmdd[5] ? parseInt(yyyymmdd[5], 10) : 0;
+    const secs = yyyymmdd[6] ? parseInt(yyyymmdd[6], 10) : 0;
+    const d = new Date(year, month, day, hours, mins, secs);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // 4. ISO date string parse with timezone
+  const d = new Date(trimmed);
+  if (!isNaN(d.getTime())) return d;
+
+  return null;
+}
+
+// Validate if a date string/object is today strictly in user's local timezone
+function isDateToday(dateVal) {
+  const d = parseAnyDate(dateVal);
+  if (!d) return false;
+  const now = new Date();
+  return (
+    d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
+  );
+}
+
+// Check if a task strictly belongs to the current user (only my hours, no one else's)
+function isTaskOfUser(item, userFilter) {
+  if (!userFilter) return false; // Strictly require user filter so we NEVER count other people's hours!
+  const fields = item.fields || {};
+  const assignedTo = fields['System.AssignedTo'] || fields['33'];
+
+  // Completed work strictly belongs to the person ASSIGNED to the task!
+  // Never count unassigned tasks or tasks assigned to other team members.
+  if (!assignedTo) return false;
+
+  return isUserMatch(assignedTo, userFilter);
+}
+
+// Helper to determine effective user, auto-discovering from Azure DevOps if needed
+async function getEffectiveUser(settings, authHeader, org) {
+  let user = (settings.assignedUser || '').trim();
+  if (user) return user;
+
+  try {
+    const url = `https://dev.azure.com/${org}/_apis/connectionData?api-version=7.0`;
+    const res = await fetch(url, { headers: { 'Authorization': authHeader } });
+    if (res.ok) {
+      const data = await res.json();
+      const authUser = data.authenticatedUser || data.authorizedUser;
+      if (authUser) {
+        user = (authUser.displayName || authUser.customDisplayName || authUser.providerDisplayName || authUser.mail || authUser.uniqueName || '').trim();
+        console.log('[ADO Notifier] Usuario detectado automáticamente desde Azure DevOps:', user);
+      }
+    }
+  } catch (e) {
+    console.warn('[ADO Notifier] Error obteniendo connectionData:', e);
+  }
+
+  return user;
+}
+
+// Batch work items fetching to safely respect Azure DevOps API limits
+async function fetchWorkItemsInBatches(ids, org, project, authHeader) {
+  if (!ids || ids.length === 0) return [];
+  const chunkSize = 150;
+  const batches = [];
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const url = `https://dev.azure.com/${org}/${project}/_apis/wit/workitems?ids=${chunk.join(',')}&$expand=All&api-version=7.0`;
+    batches.push(
+      fetch(url, { headers: { 'Authorization': authHeader } })
+        .then(res => res.ok ? res.json() : { value: [] })
+        .then(data => data.value || [])
+        .catch(err => {
+          console.error('[ADO Notifier] Error obteniendo lote de workitems:', err);
+          return [];
+        })
+    );
+  }
+  const results = await Promise.all(batches);
+  return results.flat();
 }
 
 // Main Update Checker & Concurrency Lock
@@ -423,13 +659,15 @@ async function checkForUpdates() {
     workItemsCache = {},
     notifiedStates = {},
     history = [],
-    isInitialized
+    isInitialized,
+    todayTasksSummary: prevTodaySummary
   } = await chrome.storage.local.get([
     'settings',
     'workItemsCache',
     'notifiedStates',
     'history',
-    'isInitialized'
+    'isInitialized',
+    'todayTasksSummary'
   ]);
 
   const settings = {
@@ -453,7 +691,19 @@ async function checkForUpdates() {
     const org = encodeURIComponent(settings.org.trim());
     const project = encodeURIComponent(settings.project.trim());
 
-    // 1. WIQL Query
+    // Auto-detect user if not explicitly configured in settings
+    let effectiveUser = (settings.assignedUser || '').trim();
+    if (!effectiveUser) {
+      effectiveUser = await getEffectiveUser(settings, authHeader, org);
+      if (effectiveUser) {
+        settings.assignedUser = effectiveUser;
+        chrome.storage.local.get('settings', ({ settings: cur = {} }) => {
+          chrome.storage.local.set({ settings: { ...cur, assignedUser: effectiveUser } });
+        });
+      }
+    }
+
+    // 1. WIQL Query for Recent Changes (HUs, Bugs, Tasks - last 14 days)
     const wiqlUrl = `https://dev.azure.com/${org}/${project}/_apis/wit/wiql?api-version=7.0`;
     const wiqlQuery = {
       query: `SELECT [System.Id], [System.Title], [System.WorkItemType], [System.State], [System.AssignedTo], [System.ChangedDate] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.ChangedDate] >= @today - 14 ORDER BY [System.ChangedDate] DESC`
@@ -481,34 +731,80 @@ async function checkForUpdates() {
     }
 
     const wiqlData = await wiqlResponse.json();
-    const workItemIds = (wiqlData.workItems || []).slice(0, 200).map(item => item.id);
+    const recentWorkItemIds = (wiqlData.workItems || []).slice(0, 200).map(item => item.id);
 
-    if (workItemIds.length === 0) {
-      console.log('[ADO Notifier] Sin elementos de trabajo modificados recientemente.');
-      await chrome.storage.local.set({ lastSync: new Date().toISOString(), isInitialized: true });
-      return { success: true, updatedCount: 0 };
-    }
-
-    // 2. Fetch Work Item Details
-    const detailsUrl = `https://dev.azure.com/${org}/${project}/_apis/wit/workitems?ids=${workItemIds.join(',')}&$expand=All&api-version=7.0`;
-    const detailsResponse = await fetch(detailsUrl, {
-      headers: { 'Authorization': authHeader }
-    });
-
-    if (!detailsResponse.ok) {
-      let errDetail = detailsResponse.statusText;
-      try {
-        const errJson = await detailsResponse.json();
-        errDetail = errJson.message || JSON.stringify(errJson);
-      } catch (e) {
-        errDetail = await detailsResponse.text();
+    // Dedicated query for today's work items to ensure 100% of today's tasks are captured
+    let todayWorkItemIds = [];
+    try {
+      const todayWiqlResponse = await fetch(wiqlUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: JSON.stringify({
+          query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND [System.ChangedDate] >= @today ORDER BY [System.ChangedDate] DESC`
+        })
+      });
+      if (todayWiqlResponse.ok) {
+        const todayWiqlData = await todayWiqlResponse.json();
+        todayWorkItemIds = (todayWiqlData.workItems || []).map(i => i.id);
       }
-      console.error('[ADO Notifier] Error obteniendo detalles:', detailsResponse.status, errDetail);
-      return { success: false, message: `Error obteniendo detalles (${detailsResponse.status}): ${errDetail}` };
+    } catch (e) {
+      console.warn('[ADO Notifier] Error en consulta WIQL de hoy:', e);
     }
 
-    const detailsData = await detailsResponse.json();
-    const items = detailsData.value || [];
+    // Also specifically query for Tasks changed today or yesterday to ensure completed work items are present
+    let doneTasksWorkItemIds = [];
+    try {
+      const doneWiqlResponse = await fetch(wiqlUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeader
+        },
+        body: JSON.stringify({
+          query: `SELECT [System.Id] FROM WorkItems WHERE [System.TeamProject] = @project AND ([System.WorkItemType] = 'Task' OR [System.WorkItemType] = 'Tarea') AND [System.ChangedDate] >= @today - 1 ORDER BY [System.ChangedDate] DESC`
+        })
+      });
+      if (doneWiqlResponse.ok) {
+        const doneWiqlData = await doneWiqlResponse.json();
+        doneTasksWorkItemIds = (doneWiqlData.workItems || []).map(i => i.id);
+      }
+    } catch (e) {
+      console.warn('[ADO Notifier] Error en consulta WIQL de tareas:', e);
+    }
+
+    const combinedIds = Array.from(new Set([...todayWorkItemIds, ...doneTasksWorkItemIds, ...recentWorkItemIds])).slice(0, 300);
+
+    const now = new Date();
+    const currentTodayKey = getTodayKey(now);
+
+    if (combinedIds.length === 0) {
+      console.log('[ADO Notifier] Sin elementos de trabajo modificados recientemente.');
+      let todayHours = 0;
+      let todaySummary = { date: now.toISOString(), dateKey: currentTodayKey, totalHours: 0, taskCount: 0, tasks: [], tasksMap: {} };
+      if (prevTodaySummary && prevTodaySummary.dateKey === currentTodayKey && Array.isArray(prevTodaySummary.tasks)) {
+        const sanitizedTasks = prevTodaySummary.tasks.filter(t => t && t.workingDate && isDateToday(t.workingDate));
+        todayHours = Math.round(sanitizedTasks.reduce((acc, t) => acc + (t.hours || 0), 0) * 100) / 100;
+        todaySummary = {
+          ...prevTodaySummary,
+          totalHours: todayHours,
+          taskCount: sanitizedTasks.length,
+          tasks: sanitizedTasks
+        };
+      }
+      await chrome.storage.local.set({
+        lastSync: now.toISOString(),
+        isInitialized: true,
+        todayCompletedHours: todayHours,
+        todayTasksSummary: todaySummary
+      });
+      return { success: true, updatedCount: 0, todayCompletedHours: todayHours };
+    }
+
+    // 2. Fetch Work Item Details in batches
+    const items = await fetchWorkItemsInBatches(combinedIds, org, project, authHeader);
 
     const newCache = { ...workItemsCache };
     const newNotifiedStates = { ...notifiedStates };
@@ -527,16 +823,43 @@ async function checkForUpdates() {
     const committedHuStates = mappings.committedHuStates || DEFAULT_SETTINGS.stateMappings.committedHuStates;
     const isFirstBaseline = !isInitialized || Object.keys(workItemsCache).length === 0;
 
+    // Fresh map for today's completed tasks strictly for the current day
+    const todayTasksMap = {};
+
     for (const item of items) {
       const id = item.id;
       const title = item.fields['System.Title'] || 'Sin Título';
-      const type = item.fields['System.WorkItemType'] || '';
-      const state = item.fields['System.State'] || '';
-      const changedDate = item.fields['System.ChangedDate'] || '';
+      const type = item.fields['System.WorkItemType'] || item.fields['25'] || '';
+      const state = item.fields['System.State'] || item.fields['2'] || '';
+      const changedDate = item.fields['System.ChangedDate'] || item.fields['3'] || '';
 
       const currentRoles = extractWorkItemRoles(item.fields);
       const itemUrl = `https://dev.azure.com/${settings.org.trim()}/${settings.project.trim()}/_workitems/edit/${id}`;
       const cached = workItemsCache[id];
+
+      // Track today's completed work strictly for the user ("solo mis horas no las de nadie mas")
+      const isTask = isWorkItemTask(type) || (item.fields['25'] && isWorkItemTask(item.fields['25']));
+      const completedWork = extractCompletedWorkHours(item.fields);
+
+      if (isTask && completedWork > 0) {
+        if (isTaskOfUser(item, effectiveUser)) {
+          const taskDate = extractTaskDate(item.fields);
+          const isToday = isDateToday(taskDate);
+
+          // Count strictly if task has a working date that corresponds to TODAY
+          if (isToday) {
+            todayTasksMap[id] = {
+              id,
+              title,
+              type: type || 'Task',
+              hours: completedWork,
+              state: state || 'Done',
+              workingDate: taskDate,
+              url: itemUrl
+            };
+          }
+        }
+      }
 
       let notificationReason = null;
       let notificationCategory = null;
@@ -960,13 +1283,28 @@ async function checkForUpdates() {
     }
     const finalHistory = dedupedHistory.slice(0, 50);
 
+    const todayTasksList = Object.values(todayTasksMap);
+    const totalTodayHours = Math.round(todayTasksList.reduce((acc, t) => acc + (t.hours || 0), 0) * 100) / 100;
+    console.log(`[ADO Notifier] Horas hoy: ${totalTodayHours}h en ${todayTasksList.length} tareas (Usuario: "${effectiveUser}"):`, todayTasksList.map(t => `#${t.id}: ${t.hours}h - ${t.title}`));
+
+    const todaySummary = {
+      date: new Date().toISOString(),
+      dateKey: currentTodayKey,
+      totalHours: totalTodayHours,
+      taskCount: todayTasksList.length,
+      tasks: todayTasksList,
+      tasksMap: todayTasksMap
+    };
+
     try {
       await chrome.storage.local.set({
         workItemsCache: prunedCache,
         notifiedStates: newNotifiedStates,
         history: finalHistory,
         lastSync: new Date().toISOString(),
-        isInitialized: true
+        isInitialized: true,
+        todayCompletedHours: totalTodayHours,
+        todayTasksSummary: todaySummary
       });
     } catch (quotaErr) {
       console.warn('[ADO Notifier] Error guardando almacenamiento, limpiando cache previa:', quotaErr);
@@ -979,7 +1317,9 @@ async function checkForUpdates() {
         notifiedStates: newNotifiedStates,
         history: finalHistory.slice(0, 25),
         lastSync: new Date().toISOString(),
-        isInitialized: true
+        isInitialized: true,
+        todayCompletedHours: totalTodayHours,
+        todayTasksSummary: todaySummary
       });
     }
     await updateBadge(finalHistory);
@@ -991,7 +1331,9 @@ async function checkForUpdates() {
     return {
       success: true,
       updatedCount: notificationsToTrigger.length,
-      lastSync: new Date().toISOString()
+      lastSync: new Date().toISOString(),
+      todayCompletedHours: totalTodayHours,
+      todayTasksCount: todayTasksList.length
     };
 
   } catch (err) {
@@ -1164,6 +1506,25 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
+  if (request.action === 'SET_MOCK_TODAY_HOURS') {
+    const hours = parseFloat(request.hours) || 0;
+    const nowIso = new Date().toISOString();
+    const summary = {
+      date: nowIso,
+      totalHours: hours,
+      taskCount: hours > 0 ? 1 : 0,
+      tasks: hours > 0 ? [{ id: 279554, title: 'HU95-Prueba de regresión y cierre', hours, state: 'Done', workingDate: nowIso }] : [],
+      tasksMap: hours > 0 ? { '279554': { id: 279554, title: 'HU95-Prueba de regresión y cierre', hours, state: 'Done', workingDate: nowIso } } : {}
+    };
+    chrome.storage.local.set({
+      todayCompletedHours: hours,
+      todayTasksSummary: summary,
+      lastSync: nowIso
+    }).then(() => sendResponse({ success: true, hours }))
+      .catch(err => sendResponse({ success: false, message: err.message }));
+    return true;
+  }
+
   if (request.action === 'TRIGGER_TEST_NOTIFICATION') {
     handleTestNotification(request.category)
       .then(result => sendResponse(result))
@@ -1217,6 +1578,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         await updateBadge([]);
         sendResponse({ success: true });
       });
+    return true;
+  }
+
+  // --- Task & Time History Handlers ---
+  if (request.action === 'GET_PROJECT_TEAMS') {
+    fetchProjectTeams(request.credentials)
+      .then(res => sendResponse(res))
+      .catch(err => sendResponse({ success: false, message: err.message }));
+    return true;
+  }
+
+  if (request.action === 'GET_TEAM_ITERATIONS') {
+    fetchTeamIterations(request.teamId, request.credentials)
+      .then(res => sendResponse(res))
+      .catch(err => sendResponse({ success: false, message: err.message }));
+    return true;
+  }
+
+  if (request.action === 'QUERY_TASK_TIME_HISTORY') {
+    queryTaskTimeHistory(request.params)
+      .then(res => sendResponse(res))
+      .catch(err => sendResponse({ success: false, message: err.message }));
     return true;
   }
 });
@@ -1318,9 +1701,26 @@ async function testAzureDevOpsConnection(creds) {
     }
 
     const data = await res.json();
+
+    // Auto-detect authenticated user identity
+    let verifiedUser = '';
+    try {
+      const connUrl = `https://dev.azure.com/${cleanOrg}/_apis/connectionData?api-version=7.0`;
+      const connRes = await fetch(connUrl, { headers: { 'Authorization': authHeader } });
+      if (connRes.ok) {
+        const connData = await connRes.json();
+        const userObj = connData.authenticatedUser || connData.authorizedUser;
+        if (userObj) {
+          verifiedUser = (userObj.displayName || userObj.customDisplayName || '').trim();
+        }
+      }
+    } catch (e) {}
+
+    const userMsg = verifiedUser ? ` | Usuario autenticado: "${verifiedUser}"` : '';
     return {
       success: true,
-      message: `¡Conexión Exitosa con Azure DevOps! Proyecto verificado: "${data.name}" (ID: ${data.id})`
+      message: `¡Conexión Exitosa con Azure DevOps! Proyecto verificado: "${data.name}"${userMsg}`,
+      authenticatedUser: verifiedUser
     };
 
   } catch (err) {
@@ -1430,4 +1830,390 @@ async function handleTestNotification(category = 'HU') {
 
   await triggerNotification(notifPayload, settings || DEFAULT_SETTINGS);
   return { success: true, notification: notifPayload };
+}
+
+// -------------------------------------------------------------
+// TASK & TIME HISTORY ENGINE (Teams, Sprints & Completed Work)
+// -------------------------------------------------------------
+
+function formatDateFriendly(dateVal) {
+  const d = parseAnyDate(dateVal);
+  if (!d) return dateVal ? String(dateVal) : 'Sin fecha';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const mins = String(d.getMinutes()).padStart(2, '0');
+  return `${day}/${month}/${year} ${hours}:${mins}`;
+}
+
+function formatDateOnly(dateVal) {
+  const d = parseAnyDate(dateVal);
+  if (!d) return dateVal ? String(dateVal) : 'Sin fecha';
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+// Fetch list of Teams for the current Project
+async function fetchProjectTeams(creds) {
+  try {
+    const { settings: storedSettings = {} } = await chrome.storage.local.get('settings');
+    const settings = creds || storedSettings;
+    const org = (settings.org || '').trim();
+    const project = (settings.project || '').trim();
+    const pat = (settings.pat || '').trim();
+
+    if (!org || !project || !pat) {
+      return { success: false, message: 'Credenciales incompletas (Org, Proyecto o PAT).' };
+    }
+
+    const authHeader = 'Basic ' + btoa(':' + pat);
+    const cleanOrg = encodeURIComponent(org);
+    const cleanProject = encodeURIComponent(project);
+    const url = `https://dev.azure.com/${cleanOrg}/_apis/projects/${cleanProject}/teams?$top=100&api-version=7.0`;
+
+    const res = await fetch(url, { headers: { 'Authorization': authHeader } });
+    if (!res.ok) {
+      return { success: false, message: `Error HTTP ${res.status}: ${res.statusText}` };
+    }
+
+    const data = await res.json();
+    const teams = (data.value || []).map(t => ({
+      id: t.id,
+      name: t.name,
+      description: t.description || ''
+    }));
+
+    return { success: true, teams };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+// Fetch Sprints / Iterations for a specific Team
+async function fetchTeamIterations(teamIdOrName, creds) {
+  try {
+    const { settings: storedSettings = {} } = await chrome.storage.local.get('settings');
+    const settings = creds || storedSettings;
+    const org = (settings.org || '').trim();
+    const project = (settings.project || '').trim();
+    const pat = (settings.pat || '').trim();
+
+    if (!org || !project || !pat) {
+      return { success: false, message: 'Credenciales incompletas.' };
+    }
+
+    const authHeader = 'Basic ' + btoa(':' + pat);
+    const cleanOrg = encodeURIComponent(org);
+    const cleanProject = encodeURIComponent(project);
+    const cleanTeam = encodeURIComponent(teamIdOrName);
+    const url = `https://dev.azure.com/${cleanOrg}/${cleanProject}/${cleanTeam}/_apis/work/teamsettings/iterations?api-version=7.0`;
+
+    const res = await fetch(url, { headers: { 'Authorization': authHeader } });
+    if (!res.ok) {
+      return { success: false, message: `Error HTTP ${res.status}: ${res.statusText}` };
+    }
+
+    const data = await res.json();
+    const iterations = (data.value || []).map(i => ({
+      id: i.id,
+      name: i.name,
+      path: i.path,
+      startDate: i.attributes?.startDate || null,
+      finishDate: i.attributes?.finishDate || null,
+      timeFrame: i.attributes?.timeFrame || null
+    }));
+
+    // Sort iterations with current/future first, then by startDate descending
+    iterations.sort((a, b) => {
+      if (a.timeFrame === 'current') return -1;
+      if (b.timeFrame === 'current') return 1;
+      const dateA = a.startDate ? new Date(a.startDate).getTime() : 0;
+      const dateB = b.startDate ? new Date(b.startDate).getTime() : 0;
+      return dateB - dateA;
+    });
+
+    return { success: true, iterations };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+// Helper to aggregate task list into structured Teams, Sprints, Daily Log and Summary
+function formatTaskTimeAggregation(tasks, params = {}, effectiveUser = '', isDemo = false) {
+  const { startDate, endDate, teamFilter, sprintFilter } = params;
+
+  let filtered = [...tasks];
+
+  // 1. Date Range Filter
+  if (startDate) {
+    const startBoundary = new Date(startDate + 'T00:00:00');
+    filtered = filtered.filter(t => {
+      const d = t.dateObj || parseAnyDate(t.rawDate || t.workingDate);
+      return d ? d >= startBoundary : true;
+    });
+  }
+
+  if (endDate) {
+    const endBoundary = new Date(endDate + 'T23:59:59.999');
+    filtered = filtered.filter(t => {
+      const d = t.dateObj || parseAnyDate(t.rawDate || t.workingDate);
+      return d ? d <= endBoundary : true;
+    });
+  }
+
+  // 2. Team Filter
+  if (teamFilter && teamFilter !== 'ALL') {
+    const targetTeam = teamFilter.toLowerCase().trim();
+    filtered = filtered.filter(t => (t.teamName || '').toLowerCase().trim() === targetTeam);
+  }
+
+  // 3. Sprint Filter
+  if (sprintFilter && sprintFilter !== 'ALL') {
+    const targetSprint = sprintFilter.toLowerCase().trim();
+    filtered = filtered.filter(t =>
+      (t.sprintName || '').toLowerCase().trim() === targetSprint ||
+      (t.iterationPath || '').toLowerCase().includes(targetSprint)
+    );
+  }
+
+  // 4. Sort tasks descending by date
+  filtered.sort((a, b) => {
+    const da = (a.dateObj ? a.dateObj.getTime() : (parseAnyDate(a.rawDate || a.workingDate)?.getTime() || 0));
+    const db = (b.dateObj ? b.dateObj.getTime() : (parseAnyDate(b.rawDate || b.workingDate)?.getTime() || 0));
+    return db - da;
+  });
+
+  // 5. Total Metrics
+  const totalHours = Math.round(filtered.reduce((sum, t) => sum + (t.hours || 0), 0) * 100) / 100;
+  const totalTasks = filtered.length;
+
+  // 6. Group by Team and by Sprint
+  const teamsMap = {};
+  for (const t of filtered) {
+    const tName = t.teamName || 'Equipo General';
+    const sName = t.sprintName || 'Sprint General';
+
+    if (!teamsMap[tName]) {
+      teamsMap[tName] = {
+        name: tName,
+        totalHours: 0,
+        taskCount: 0,
+        percentage: 0,
+        sprints: {},
+        tasks: []
+      };
+    }
+
+    teamsMap[tName].totalHours = Math.round((teamsMap[tName].totalHours + t.hours) * 100) / 100;
+    teamsMap[tName].taskCount += 1;
+    teamsMap[tName].tasks.push(t);
+
+    if (!teamsMap[tName].sprints[sName]) {
+      teamsMap[tName].sprints[sName] = {
+        name: sName,
+        iterationPath: t.iterationPath || '',
+        totalHours: 0,
+        taskCount: 0,
+        tasks: []
+      };
+    }
+
+    teamsMap[tName].sprints[sName].totalHours = Math.round((teamsMap[tName].sprints[sName].totalHours + t.hours) * 100) / 100;
+    teamsMap[tName].sprints[sName].taskCount += 1;
+    teamsMap[tName].sprints[sName].tasks.push(t);
+  }
+
+  // Calculate percentage of each team against the general total
+  const teamsList = Object.values(teamsMap);
+  for (const team of teamsList) {
+    team.percentage = totalHours > 0 ? Math.round((team.totalHours / totalHours) * 1000) / 10 : 0;
+    team.sprintsList = Object.values(team.sprints).sort((a, b) => b.totalHours - a.totalHours);
+  }
+  teamsList.sort((a, b) => b.totalHours - a.totalHours);
+
+  // 7. Group by Date for Daily Log View
+  const dailyMap = {};
+  for (const t of filtered) {
+    const key = t.dateKey || 'Sin Fecha';
+    if (!dailyMap[key]) {
+      dailyMap[key] = {
+        dateKey: key,
+        dateFormatted: formatDateOnly(t.dateObj || t.rawDate || t.workingDate),
+        totalHours: 0,
+        taskCount: 0,
+        tasks: []
+      };
+    }
+    dailyMap[key].totalHours = Math.round((dailyMap[key].totalHours + t.hours) * 100) / 100;
+    dailyMap[key].taskCount += 1;
+    dailyMap[key].tasks.push(t);
+  }
+
+  const dailyLog = Object.values(dailyMap).sort((a, b) => b.dateKey.localeCompare(a.dateKey));
+
+  return {
+    success: true,
+    isDemo,
+    user: effectiveUser,
+    totalHours,
+    totalTasks,
+    teamsCount: teamsList.length,
+    teams: teamsList,
+    dailyLog,
+    tasks: filtered
+  };
+}
+
+// Main Query Function: WIQL + Batch Fetch + Done Tasks with Completed Work
+async function queryTaskTimeHistory(params = {}) {
+  const { settings = {} } = await chrome.storage.local.get('settings');
+  const org = (settings.org || '').trim();
+  const project = (settings.project || '').trim();
+  const pat = (settings.pat || '').trim();
+
+  if (!org || !project || !pat) {
+    return {
+      success: false,
+      message: 'Por favor configura tu Organización, Proyecto y PAT en la pestaña Credenciales para consultar el historial de tareas.'
+    };
+  }
+
+  const authHeader = 'Basic ' + btoa(':' + pat);
+  const targetUser = (params.userFilter || '').trim();
+  const effectiveUser = targetUser || (await getEffectiveUser(settings, authHeader, org));
+
+  // 1. Fetch known project teams for accurate team resolution
+  let knownTeams = [];
+  try {
+    const teamsRes = await fetchProjectTeams(settings);
+    if (teamsRes.success) knownTeams = teamsRes.teams;
+  } catch (e) {
+    console.warn('[ADO Notifier] Error obteniendo equipos:', e);
+  }
+
+  // 2. Build WIQL query for Done Tasks
+  const wiqlUrl = `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_apis/wit/wiql?api-version=7.0`;
+  let wiql = `SELECT [System.Id], [System.Title], [System.State], [System.WorkItemType], [System.AssignedTo], [System.AreaPath], [System.IterationPath], [System.ChangedDate] FROM WorkItems WHERE [System.TeamProject] = @project AND ([System.WorkItemType] = 'Task' OR [System.WorkItemType] = 'Tarea') AND [System.State] = 'Done'`;
+
+  if (params.startDate) {
+    // Add buffer of 14 days before start date
+    const d = new Date(params.startDate + 'T00:00:00');
+    const buf = new Date(d.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const bufStr = buf.toISOString().split('T')[0];
+    wiql += ` AND [System.ChangedDate] >= '${bufStr}T00:00:00Z'`;
+  } else {
+    wiql += ` AND [System.ChangedDate] >= @today - 120`;
+  }
+
+  wiql += ` ORDER BY [System.ChangedDate] DESC`;
+
+  const wiqlResponse = await fetch(wiqlUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': authHeader
+    },
+    body: JSON.stringify({ query: wiql })
+  });
+
+  if (!wiqlResponse.ok) {
+    let errDetail = wiqlResponse.statusText;
+    try {
+      const errJson = await wiqlResponse.json();
+      errDetail = errJson.message || JSON.stringify(errJson);
+    } catch (e) {}
+    console.warn('[ADO Notifier] Error en WIQL de tareas completadas:', errDetail);
+    return {
+      success: false,
+      message: `Error al consultar Azure DevOps: ${errDetail}`
+    };
+  }
+
+  const wiqlData = await wiqlResponse.json();
+  const taskIds = (wiqlData.workItems || []).slice(0, 400).map(i => i.id);
+
+  if (taskIds.length === 0) {
+    return formatTaskTimeAggregation([], params, effectiveUser, false);
+  }
+
+  // 3. Batch fetch work items details with $expand=All
+  const items = await fetchWorkItemsInBatches(taskIds, org, project, authHeader);
+  const matchedTasks = [];
+
+  for (const item of items) {
+    const fields = item.fields || {};
+    const state = (fields['System.State'] || '').trim();
+
+    // Condition 1: State must be Done
+    if (state.toLowerCase() !== 'done') continue;
+
+    // Condition 2: Completed Work > 0
+    const completedWork = extractCompletedWorkHours(fields);
+    if (completedWork <= 0) continue;
+
+    // Condition 3: Must belong to user
+    if (effectiveUser && !isTaskOfUser(item, effectiveUser)) continue;
+
+    // Condition 4: Extract Date
+    const rawDate = extractTaskDate(fields) ||
+                    fields['Microsoft.VSTS.Common.ClosedDate'] ||
+                    fields['Microsoft.VSTS.Common.StateChangeDate'] ||
+                    fields['System.ChangedDate'];
+    const parsedDate = parseAnyDate(rawDate);
+
+    // Condition 5: Detect Team and Sprint
+    const areaPath = fields['System.AreaPath'] || '';
+    const iterPath = fields['System.IterationPath'] || '';
+
+    let detectedTeam = '';
+    // Check known teams
+    for (const team of knownTeams) {
+      if (areaPath.includes(team.name) || iterPath.includes(team.name)) {
+        detectedTeam = team.name;
+        break;
+      }
+    }
+
+    if (!detectedTeam) {
+      if (areaPath.includes('\\')) {
+        const parts = areaPath.split('\\');
+        detectedTeam = parts[parts.length - 1];
+      } else {
+        detectedTeam = areaPath || 'Equipo General';
+      }
+    }
+
+    let detectedSprint = '';
+    if (iterPath.includes('\\')) {
+      const parts = iterPath.split('\\');
+      detectedSprint = parts[parts.length - 1];
+    } else {
+      detectedSprint = iterPath || 'Sprint General';
+    }
+
+    const taskObj = {
+      id: item.id,
+      title: fields['System.Title'] || 'Sin título',
+      state: state,
+      hours: completedWork,
+      rawDate: rawDate || '',
+      dateObj: parsedDate,
+      dateFormatted: formatDateFriendly(parsedDate || rawDate),
+      dateKey: parsedDate ? getTodayKey(parsedDate) : 'Sin Fecha',
+      areaPath: areaPath,
+      iterationPath: iterPath,
+      teamName: detectedTeam,
+      sprintName: detectedSprint,
+      activity: fields['Microsoft.VSTS.Common.Activity'] || fields['Custom.Activity'] || 'General',
+      assignedTo: extractCleanIdentity(fields['System.AssignedTo'] || ''),
+      url: `https://dev.azure.com/${encodeURIComponent(org)}/${encodeURIComponent(project)}/_workitems/edit/${item.id}`
+    };
+
+    matchedTasks.push(taskObj);
+  }
+
+  return formatTaskTimeAggregation(matchedTasks, params, effectiveUser, false);
 }

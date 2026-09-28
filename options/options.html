@@ -29,6 +29,10 @@
       </div>
 
       <div class="header-actions">
+        <div id="portalTodayHoursBadge" class="status-badge portal-hours-badge" title="Horas de Completed Work acumuladas hoy en tus tareas">
+          <svg class="portal-hours-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span>Taskeado Hoy: <strong id="portalTodayHoursText">0h</strong></span>
+        </div>
         <div id="connectionStatusBadge" class="status-badge disconnected">
           <span class="status-dot"></span>
           <span class="status-text">Sin Configurar</span>
@@ -59,6 +63,10 @@
         <button class="nav-item" data-tab="history">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Historial de Alertas
+        </button>
+        <button class="nav-item" data-tab="time-history">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="2" x2="14" y2="2"/><line x1="12" y1="14" x2="15" y2="11"/><circle cx="12" cy="14" r="8"/></svg>
+          Historial de Tareas & Tiempos
         </button>
         <button class="nav-item" data-tab="guide">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -485,6 +493,275 @@
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
                 <p>No se han registrado notificaciones aún.</p>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tab: Historial de Tareas & Tiempos por Team Sprint -->
+        <section id="tab-time-history" class="tab-page">
+          <div class="card glass-card time-history-card">
+            <!-- Header -->
+            <div class="card-header flex-between flex-wrap gap-16">
+              <div>
+                <div class="time-header-title-row">
+                  <h2>Historial de Tareas & Tiempos Taskeados</h2>
+                  <span class="badge-tag live-badge">Done & Completed Work</span>
+                </div>
+                <p>Consulta las tareas finalizadas (<code>Done</code>) con tiempo imputado (<code>Completed Work</code>), desglosadas por Team Sprint o en vista general consolidada.</p>
+              </div>
+              <div class="header-actions">
+                <button type="button" id="btnExportTimeCsv" class="btn btn-secondary" title="Exportar reporte de tiempos a formato CSV">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Exportar CSV
+                </button>
+                <button type="button" id="btnCopyTimeSummary" class="btn btn-secondary" title="Copiar resumen para reporte diario o de sprint">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copiar Reporte
+                </button>
+              </div>
+            </div>
+
+            <!-- Filters Control Panel -->
+            <div class="time-filters-panel">
+              <div class="time-filters-grid">
+                <!-- Date Start -->
+                <div class="time-filter-item">
+                  <label for="timeFilterStartDate">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Fecha Inicio
+                  </label>
+                  <input type="date" id="timeFilterStartDate" class="styled-input">
+                </div>
+
+                <!-- Date End -->
+                <div class="time-filter-item">
+                  <label for="timeFilterEndDate">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    Fecha Fin
+                  </label>
+                  <input type="date" id="timeFilterEndDate" class="styled-input">
+                </div>
+
+                <!-- Team Select -->
+                <div class="time-filter-item">
+                  <div class="label-with-action">
+                    <label for="timeFilterTeam">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      Equipo / Team
+                    </label>
+                    <button type="button" id="btnReloadTeams" class="btn-link-action" title="Recargar equipos desde Azure DevOps">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                      Recargar
+                    </button>
+                  </div>
+                  <select id="timeFilterTeam" class="styled-select">
+                    <option value="ALL">Todos los Equipos (Consulta General)</option>
+                  </select>
+                </div>
+
+                <!-- Sprint Select -->
+                <div class="time-filter-item">
+                  <label for="timeFilterSprint">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                    Team Sprint
+                  </label>
+                  <select id="timeFilterSprint" class="styled-select">
+                    <option value="ALL">Todos los Sprints</option>
+                  </select>
+                </div>
+
+                <!-- User Filter -->
+                <div class="time-filter-item">
+                  <label for="timeFilterUser">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Usuario Asignado
+                  </label>
+                  <input type="text" id="timeFilterUser" class="styled-input" placeholder="Tu usuario o email">
+                </div>
+
+                <!-- Submit Button -->
+                <div class="time-filter-item filter-btn-col">
+                  <button type="button" id="btnQueryTimeHistory" class="btn btn-primary btn-search-tasks">
+                    <svg class="btn-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <span class="btn-search-spinner hidden"></span>
+                    <span class="btn-search-text">Consultar Tareas</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Quick Presets Row -->
+              <div class="time-presets-wrapper flex-between flex-wrap gap-8">
+                <div class="preset-chips-group">
+                  <span class="preset-title">Rangos rápidos:</span>
+                  <button type="button" class="chip time-preset-chip" data-range="today">Hoy</button>
+                  <button type="button" class="chip time-preset-chip active" data-range="thisWeek">Esta Semana</button>
+                  <button type="button" class="chip time-preset-chip" data-range="currentSprint">Sprint Actual</button>
+                  <button type="button" class="chip time-preset-chip" data-range="thisMonth">Este Mes</button>
+                  <button type="button" class="chip time-preset-chip" data-range="last30Days">Últimos 30 días</button>
+                </div>
+
+                <div id="sprintQuickAction" class="sprint-quick-action hidden">
+                  <button type="button" id="btnApplySprintDates" class="btn-subtle-glow">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                    <span>Ajustar fechas al Sprint</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Feedback / Notice banner -->
+            <div id="timeQueryFeedback" class="feedback-banner hidden"></div>
+
+            <!-- Section 1: Consulta General - Totales Globales (KPI Cards) -->
+            <div class="time-section-heading">
+              <span class="section-indicator"></span>
+              <h3>Consulta General del Total entre Teams</h3>
+              <span class="heading-badge" id="kpiDateRangeBadge">Esta Semana</span>
+            </div>
+
+            <div class="time-kpi-grid">
+              <div class="time-kpi-card kpi-blue">
+                <div class="kpi-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div class="kpi-info">
+                  <div class="kpi-label">Total Horas Taskeadas</div>
+                  <div class="kpi-number" id="kpiTotalHours">0h</div>
+                  <div class="kpi-desc" id="kpiHoursDesc">En tareas en estado Done</div>
+                </div>
+              </div>
+
+              <div class="time-kpi-card kpi-green">
+                <div class="kpi-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <div class="kpi-info">
+                  <div class="kpi-label">Tareas Finalizadas (Done)</div>
+                  <div class="kpi-number" id="kpiTotalTasks">0</div>
+                  <div class="kpi-desc">Con Completed Work registrado</div>
+                </div>
+              </div>
+
+              <div class="time-kpi-card kpi-purple">
+                <div class="kpi-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C084FC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </div>
+                <div class="kpi-info">
+                  <div class="kpi-label">Teams Involucrados</div>
+                  <div class="kpi-number" id="kpiTotalTeams">0</div>
+                  <div class="kpi-desc" id="kpiTeamsDesc">Equipos con horas taskeadas</div>
+                </div>
+              </div>
+
+              <div class="time-kpi-card kpi-cyan">
+                <div class="kpi-icon">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00BCF2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                </div>
+                <div class="kpi-info">
+                  <div class="kpi-label">Promedio por Tarea</div>
+                  <div class="kpi-number" id="kpiAvgHours">0h</div>
+                  <div class="kpi-desc">Horas promedio / tarea</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Visual Cross-Team Comparison (Distribución de Horas entre Teams) -->
+            <div class="team-distribution-panel glass-panel">
+              <div class="distribution-header flex-between">
+                <div>
+                  <h4>Distribución de Tiempo entre Equipos</h4>
+                  <p class="subtitle-sm">Proporción consolidada de tus horas invertidas en cada Team</p>
+                </div>
+                <span class="badge-tag" id="distributionTotalBadge">Total: 0h</span>
+              </div>
+
+              <!-- Multi-color Segmented Bar -->
+              <div class="segmented-progress-bar" id="teamSegmentedBar">
+                <div class="empty-bar-fill" style="width: 100%;"></div>
+              </div>
+
+              <!-- Team Distribution Pills Grid -->
+              <div class="team-pills-row" id="teamPillsRow">
+                <!-- Rendered dynamically -->
+              </div>
+            </div>
+
+            <!-- Section 2: Visualizaciones por Separado entre Teams -->
+            <div class="time-section-heading flex-between flex-wrap gap-12 mt-28">
+              <div class="flex-align gap-8">
+                <span class="section-indicator purple"></span>
+                <h3>Desglose Detallado por Team Sprint</h3>
+              </div>
+
+              <div class="view-mode-tabs">
+                <button type="button" class="view-tab-btn active" data-view="teamSprints">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                  <span>Por Team Sprint</span>
+                </button>
+                <button type="button" class="view-tab-btn" data-view="allTasks">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                  <span>Lista de Tareas</span>
+                  <span id="allTasksCount" class="tab-count-pill">0</span>
+                </button>
+                <button type="button" class="view-tab-btn" data-view="dailyLog">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                  <span>Bitácora por Fecha</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Search box for live filtering tasks -->
+            <div class="tasks-search-bar">
+              <div class="search-input-wrapper">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input type="text" id="timeTasksSearch" placeholder="Filtrar por ID, título de tarea, actividad o sprint...">
+                <button type="button" id="btnClearSearch" class="btn-clear-search hidden">&times;</button>
+              </div>
+            </div>
+
+            <!-- View 1: Team Sprints Hierarchical Cards -->
+            <div id="viewTeamSprintsContainer" class="time-view-pane active">
+              <div id="teamSprintsAccordion" class="team-sprints-tree">
+                <!-- Injected dynamically -->
+              </div>
+            </div>
+
+            <!-- View 2: All Tasks Table -->
+            <div id="viewAllTasksContainer" class="time-view-pane">
+              <div class="modern-table-card">
+                <div class="table-responsive">
+                  <table class="styled-tasks-table all-tasks-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 85px;">ID</th>
+                        <th style="width: 280px;">Título de la Tarea</th>
+                        <th style="width: 200px;">Equipo / Team</th>
+                        <th style="width: 130px;">Sprint</th>
+                        <th style="width: 95px; text-align: right;">Completed</th>
+                        <th style="width: 130px;">Fecha Trabajo</th>
+                        <th style="width: 105px;">Actividad</th>
+                        <th style="width: 85px; text-align: center;">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody id="allTasksTableBody">
+                      <!-- Injected dynamically -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- View 3: Daily Log -->
+            <div id="viewDailyLogContainer" class="time-view-pane">
+              <div id="dailyLogTree" class="daily-log-tree">
+                <!-- Injected dynamically -->
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="timeEmptyState" class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <p id="timeEmptyStateText">No se encontraron tareas taskeadas en el rango seleccionado.</p>
             </div>
           </div>
         </section>
