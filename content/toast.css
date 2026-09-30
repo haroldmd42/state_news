@@ -1,4 +1,4 @@
-/* Floating In-Page Toast Notification Styles - Premium Glassmorphism UI */
+/* Floating In-Page Toast Notification Styles - Premium Warm Palette UI */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700&display=swap');
 
 .ado-toast-container {
@@ -17,13 +17,13 @@
   pointer-events: auto;
   width: 380px;
   max-width: calc(100vw - 40px);
-  background: rgba(11, 15, 25, 0.94);
+  background: rgba(18, 20, 19, 0.95);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-radius: 16px;
   padding: 16px 18px;
-  color: #F1F5F9;
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6);
+  color: #F0F1F3;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 1px rgba(124, 125, 117, 0.3);
   display: flex;
   align-items: flex-start;
   gap: 14px;
@@ -35,62 +35,71 @@
 }
 
 /* Category Accent Borders & Shadows */
-/* AZUL: BUG_NEW, HU, HU_COMMITTED */
-.ado-toast.BUG_NEW,
+/* AZUL: BUG_NEW */
+.ado-toast.BUG_NEW {
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 24px rgba(56, 189, 248, 0.25);
+}
+
+/* NARANJA / BRAND: HU, HU_COMMITTED */
 .ado-toast.HU,
 .ado-toast.HU_COMMITTED {
-  border: 1px solid rgba(14, 165, 233, 0.45);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(14, 165, 233, 0.18);
+  border: 1px solid rgba(221, 112, 11, 0.5);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 22px rgba(221, 112, 11, 0.22);
 }
 
 /* AMARILLO: BUG_QA y HU_QA */
 .ado-toast.BUG_QA,
 .ado-toast.HU_QA {
   border: 1px solid rgba(245, 158, 11, 0.45);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(245, 158, 11, 0.18);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 20px rgba(245, 158, 11, 0.18);
 }
 
 /* VERDE: BUG_DONE y HU_DONE */
 .ado-toast.BUG_DONE,
 .ado-toast.HU_DONE {
   border: 1px solid rgba(16, 185, 129, 0.5);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 24px rgba(16, 185, 129, 0.25);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 24px rgba(16, 185, 129, 0.22);
 }
 
 /* MORADO: BUG_REOPEN y HU_REVIEW_PO */
 .ado-toast.BUG_REOPEN,
 .ado-toast.HU_REVIEW_PO {
   border: 1px solid rgba(168, 85, 247, 0.45);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(168, 85, 247, 0.18);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 20px rgba(168, 85, 247, 0.18);
 }
 
 /* ROJO: HU_IMPEDIMENT */
 .ado-toast.HU_IMPEDIMENT {
   border: 1px solid rgba(239, 68, 68, 0.5);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 24px rgba(239, 68, 68, 0.3);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 24px rgba(239, 68, 68, 0.25);
 }
 
 /* CIAN: HU_STAGE */
 .ado-toast.HU_STAGE {
   border: 1px solid rgba(6, 182, 212, 0.45);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 20px rgba(6, 182, 212, 0.2);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 20px rgba(6, 182, 212, 0.2);
 }
 
 /* INDIGO/VIOLETA: HU_ASSIGNED */
 .ado-toast.HU_ASSIGNED {
   border: 1px solid rgba(99, 102, 241, 0.55);
-  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 0 24px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.65), 0 0 24px rgba(99, 102, 241, 0.25);
 }
 
 .ado-toast:hover {
   transform: translateY(-3px) scale(1.01);
 }
 
-.ado-toast.BUG_NEW:hover,
+.ado-toast.BUG_NEW:hover {
+  border-color: #38BDF8;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 32px rgba(56, 189, 248, 0.45);
+}
+
 .ado-toast.HU:hover,
 .ado-toast.HU_COMMITTED:hover {
-  border-color: #38BDF8;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 30px rgba(14, 165, 233, 0.35);
+  border-color: #DD700B;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 32px rgba(221, 112, 11, 0.4);
 }
 
 .ado-toast.BUG_QA:hover,
@@ -160,13 +169,19 @@
   margin-top: 2px;
 }
 
-/* AZUL: BUG_NEW, HU, HU_COMMITTED */
-.ado-toast-icon.BUG_NEW,
+/* AZUL: BUG_NEW */
+.ado-toast-icon.BUG_NEW {
+  background: rgba(2, 132, 199, 0.2);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+}
+
+/* NARANJA: HU, HU_COMMITTED */
 .ado-toast-icon.HU,
 .ado-toast-icon.HU_COMMITTED {
-  background: rgba(14, 165, 233, 0.18);
-  color: #38BDF8;
-  border: 1px solid rgba(14, 165, 233, 0.35);
+  background: rgba(221, 112, 11, 0.18);
+  color: #DD700B;
+  border: 1px solid rgba(221, 112, 11, 0.4);
 }
 
 /* AMARILLO: BUG_QA y HU_QA */
@@ -237,12 +252,19 @@
   text-transform: uppercase;
 }
 
-/* AZUL */
-.ado-toast-pill.BUG_NEW,
+/* AZUL: BUG_NEW */
+.ado-toast-pill.BUG_NEW {
+  background: rgba(2, 132, 199, 0.22);
+  color: #38BDF8;
+  border: 1px solid rgba(56, 189, 248, 0.38);
+}
+
+/* NARANJA: HU, HU_COMMITTED */
 .ado-toast-pill.HU,
 .ado-toast-pill.HU_COMMITTED {
-  background: rgba(14, 165, 233, 0.22);
-  color: #38BDF8;
+  background: rgba(221, 112, 11, 0.22);
+  color: #FCF8D8;
+  border: 1px solid rgba(221, 112, 11, 0.38);
 }
 
 /* AMARILLO */
@@ -286,14 +308,14 @@
 
 .ado-toast-time {
   font-size: 0.7rem;
-  color: #64748B;
+  color: #7C7D75;
 }
 
 .ado-toast-title {
   font-family: 'Outfit', 'Inter', sans-serif;
   font-size: 0.92rem;
   font-weight: 700;
-  color: #FFFFFF;
+  color: #FCF8D8;
   line-height: 1.35;
   margin-bottom: 4px;
   word-break: break-word;
@@ -301,7 +323,7 @@
 
 .ado-toast-msg {
   font-size: 0.8rem;
-  color: #94A3B8;
+  color: #ADACA7;
   line-height: 1.45;
   white-space: pre-line;
   word-break: break-word;
@@ -313,25 +335,31 @@
   justify-content: space-between;
   margin-top: 8px;
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(173, 172, 167, 0.16);
 }
 
 .ado-toast-link {
   font-size: 0.75rem;
   font-weight: 600;
-  color: #38BDF8;
+  color: #DD700B;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  transition: color 0.2s ease;
+}
+
+.ado-toast-link:hover {
+  color: #EE811E;
+  text-decoration: underline;
 }
 
 .ado-toast-close {
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94A3B8;
+  background: rgba(124, 125, 117, 0.14);
+  border: 1px solid rgba(173, 172, 167, 0.2);
+  color: #ADACA7;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -343,7 +371,7 @@
 }
 
 .ado-toast-close:hover {
-  background: rgba(239, 68, 68, 0.2);
+  background: rgba(239, 68, 68, 0.22);
   color: #F87171;
-  border-color: rgba(239, 68, 68, 0.4);
+  border-color: rgba(239, 68, 68, 0.45);
 }

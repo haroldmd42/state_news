@@ -1463,7 +1463,10 @@ async function updateBadge(historyList) {
     if (chrome.action && chrome.action.setBadgeText) {
       if (unreadCount > 0) {
         chrome.action.setBadgeText({ text: String(unreadCount > 99 ? '99+' : unreadCount) });
-        chrome.action.setBadgeBackgroundColor({ color: '#0078D4' });
+        chrome.action.setBadgeBackgroundColor({ color: '#DD700B' });
+        if (chrome.action.setBadgeTextColor) {
+          chrome.action.setBadgeTextColor({ color: '#FFFFFF' });
+        }
       } else {
         chrome.action.setBadgeText({ text: '' });
       }

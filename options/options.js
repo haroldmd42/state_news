@@ -775,14 +775,14 @@ function playNotificationChime(ignoreSoundCheck = false) {
   let timeHistoryCurrentFilterText = '';
 
   const TEAM_PALETTE = [
-    '#38BDF8', // Cyan
-    '#34D399', // Emerald
-    '#C084FC', // Purple
-    '#FBBF24', // Amber
+    '#DD700B', // Vibrant Amber Orange (Palette)
+    '#34D399', // Emerald Mint
+    '#FCF8D8', // Warm Cream (Palette)
+    '#C084FC', // Purple Amethyst
+    '#FBBF24', // Amber Gold
+    '#ADACA7', // Warm Silver (Palette)
     '#F87171', // Coral Red
-    '#818CF8', // Indigo
-    '#2DD4BF', // Teal
-    '#FB923C'  // Orange
+    '#7C7D75'  // Slate Stone (Palette)
   ];
 
   // DOM Elements for Time History
